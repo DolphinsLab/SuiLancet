@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
 
+type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransaction>['mutate']>[0]
+
 export default function TransactionPage() {
   const account = useCurrentAccount()
   const client = useSuiClient()
@@ -40,7 +42,7 @@ export default function TransactionPage() {
       const tx = Transaction.from(txBase64)
 
       signAndExecute(
-        { transaction: tx },
+        { transaction: tx } as unknown as TransactionInput,
         {
           onSuccess: (result) => {
             alert(`Transaction executed! Digest: ${result.digest}`)

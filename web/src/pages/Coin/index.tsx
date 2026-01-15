@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useCurrentAccount, useSuiClientQuery, useSignAndExecuteTransaction } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
 
+type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransaction>['mutate']>[0]
+
 type CoinAction = 'merge' | 'split' | 'transfer' | 'destroy'
 
 export default function Coin() {
@@ -36,7 +38,7 @@ export default function Coin() {
     }
 
     signAndExecute(
-      { transaction: txb },
+      { transaction: txb } as unknown as TransactionInput,
       {
         onSuccess: () => {
           alert('Coins merged successfully!')
@@ -63,7 +65,7 @@ export default function Coin() {
     )
 
     signAndExecute(
-      { transaction: txb },
+      { transaction: txb } as unknown as TransactionInput,
       {
         onSuccess: () => {
           alert('Transfer successful!')
