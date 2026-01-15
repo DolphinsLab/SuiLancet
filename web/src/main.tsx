@@ -15,10 +15,13 @@ const networks = {
   devnet: { url: getFullnodeUrl('devnet') },
 }
 
+// Get default network from environment variable
+const defaultNetwork = (import.meta.env.VITE_DEFAULT_NETWORK || 'mainnet') as 'mainnet' | 'testnet' | 'devnet'
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <SuiClientProvider networks={networks} defaultNetwork="mainnet">
+      <SuiClientProvider networks={networks} defaultNetwork={defaultNetwork}>
         <WalletProvider autoConnect>
           <BrowserRouter>
             <App />

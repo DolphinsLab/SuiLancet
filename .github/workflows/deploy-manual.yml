@@ -1,0 +1,98 @@
+name: Manual Deploy to Cloudflare Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+      network:
+        description: 'Default Sui network'
+        required: true
+        default: 'testnet'
+        type: choice
+        options:
+          - mainnet
+          - testnet
+          - devnet
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment == 'prod' && 'production' || 'development' }}
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: web
+        run: pnpm build
+        env:
+          VITE_APP_ENV: ${{ inputs.environment == 'prod' && 'production' || 'development' }}
+          VITE_DEFAULT_NETWORK: ${{ inputs.network }}
+
+      - name: Deploy to Cloudflare Pages (Dev)
+        if: inputs.environment == 'dev'
+        id: deploy-dev
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy web/dist --project-name=suilancet-dev --branch=develop
+
+      - name: Deploy to Cloudflare Pages (Prod)
+        if: inputs.environment == 'prod'
+        id: deploy-prod
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy web/dist --project-name=suilancet --branch=main
+
+      - name: Set deployment URL
+        id: deploy
+        run: |
+          if [ "${{ inputs.environment }}" == "prod" ]; then
+            echo "url=${{ steps.deploy-prod.outputs.url }}" >> $GITHUB_OUTPUT
+          else
+            echo "url=${{ steps.deploy-dev.outputs.url }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Output deployment summary
+        run: |
+          echo "## 🚀 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Network | ${{ inputs.network }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | ${{ steps.deploy.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
