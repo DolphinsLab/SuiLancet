@@ -176,7 +176,7 @@ export async function mergeCoins(
     coinType ===
     "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
 
-  // 每批处理50个代币
+  // Process 50 coins per batch
   const batchSize = 50
   const txb = new Transaction()
   if (gas) {
@@ -242,7 +242,6 @@ export async function mergeCoinsAndTransfer(
     "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
 
   console.log(`merge ${coins.length} ${coinType} coins`)
-  // 每批处理50个代币
   const txb = new Transaction()
   if (gas) {
     const gasObjectRef = await getObjectRef(client, gas)
@@ -251,14 +250,12 @@ export async function mergeCoinsAndTransfer(
   const maxMergeCount = 2000
 
   const maxCount = Math.min(maxMergeCount, coins.length)
-  const batchSize = 100 // 每批处理 50 个（可以根据链的限制调整）
+  const batchSize = 100 // Process 100 per batch (adjustable based on chain limits)
   let waitMergeCoins: TransactionObjectArgument[] = []
 
-  // 外层循环应该以 batchSize 为步长
+  // Outer loop with batchSize step
   for (let i = 0; i < maxCount; i += batchSize) {
-    // const txb = new TransactionBlock() // 每批需要新的事务
-
-    // 计算这一批要处理的 coins
+    // Calculate coins for this batch
     const endIndex = Math.min(i + batchSize, maxCount)
     const batchCoins = coins.slice(i, endIndex)
 
@@ -267,13 +264,13 @@ export async function mergeCoinsAndTransfer(
     waitMergeCoins = batchCoins.map((coin) => txb.object(coin.objectId))
 
     if (i === 0) {
-      // 第一批：合并到 coins[0]
+      // First batch: merge to coins[0]
       if (isSUI) {
         txb.mergeCoins(txb.gas, waitMergeCoins.slice(1))
       } else {
       }
     } else {
-      // 后续批次：都合并到 coins[0]
+      // Subsequent batches: merge to coins[0]
       const firstCoin = txb.object(coins[0].objectId)
       if (isSUI) {
         txb.mergeCoins(txb.gas, waitMergeCoins)
@@ -284,7 +281,7 @@ export async function mergeCoinsAndTransfer(
   }
   txb.transferObjects([waitMergeCoins[0]], acceptAddress)
   await client.sendTransaction(txb)
-  await sleep(100) // 添加延时，防止请求过于频繁
+  await sleep(100) // Add delay to prevent rate limiting
 }
 
 export async function refuel_specifal_coin(

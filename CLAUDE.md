@@ -1,200 +1,201 @@
-# CLAUDE.md - SuiLancet 项目指南
+# CLAUDE.md - SuiLancet Project Guide
 
-## 项目概述
+## Project Overview
 
-SuiLancet 是一个轻量级的个人工具，用于在一个地方管理多个 Sui 钱包和后端服务。
+SuiLancet is a lightweight personal tool for managing multiple Sui wallets and backend services in one place.
 
 ---
 
-## 开发流程 (Issue-Driven Development)
+## Development Workflow (Issue-Driven Development)
 
-### 核心原则
+### Core Principles
 
-**所有功能开发必须通过 Issue 驱动**，遵循以下流程：
+**All feature development must be driven by Issues**, following this workflow:
 
-### 1. Issue 创建规范
-
-```
-标题格式: [类型] 简短描述
-类型标签: feature | bug | refactor | docs | test | chore
-```
-
-**Issue 模板**:
-- **目标**: 清晰描述要实现什么
-- **背景**: 为什么需要这个功能
-- **验收标准**: 完成的定义 (Definition of Done)
-- **技术方案**: (可选) 初步技术思路
-
-### 2. 分支管理
+### 1. Issue Creation Guidelines
 
 ```
-分支命名规范:
+Title format: [Type] Short description
+Type labels: feature | bug | refactor | docs | test | chore
+```
+
+**Issue Template**:
+- **Goal**: Clear description of what to implement
+- **Background**: Why this feature is needed
+- **Acceptance Criteria**: Definition of Done
+- **Technical Approach**: (Optional) Initial technical ideas
+
+### 2. Branch Management
+
+```
+Branch naming convention:
 - feature/issue-{number}-{short-description}
 - bugfix/issue-{number}-{short-description}
 - refactor/issue-{number}-{short-description}
 ```
 
-### 3. 开发流程
+### 3. Development Flow
 
 ```
-1. 创建 Issue → 描述需求和验收标准
-2. 创建分支 → 从 main 分支切出，关联 Issue 编号
-3. 开发实现 → 遵循代码规范
-4. 提交代码 → Commit message 引用 Issue (#123)
-5. 创建 PR → 关联 Issue，请求 Review
-6. 代码合并 → PR 合并后自动关闭 Issue
+1. Create Issue -> Describe requirements and acceptance criteria
+2. Create Branch -> Branch from main, associate with Issue number
+3. Implement -> Follow code standards
+4. Commit -> Reference Issue in commit message (#123)
+5. Create PR -> Link Issue, request review
+6. Merge -> PR merge auto-closes Issue
 ```
 
-### 4. Commit 规范
+### 4. Commit Convention
 
 ```
-格式: <type>(<scope>): <subject> (#issue-number)
+Format: <type>(<scope>): <subject> (#issue-number)
 
-类型 (type):
-- feat:     新功能
-- fix:      Bug 修复
-- refactor: 代码重构
-- docs:     文档更新
-- test:     测试相关
-- chore:    构建/工具变更
+Types:
+- feat:     New feature
+- fix:      Bug fix
+- refactor: Code refactoring
+- docs:     Documentation update
+- test:     Test related
+- chore:    Build/tool changes
 
-示例:
+Examples:
 - feat(wallet): add multi-wallet support (#12)
 - fix(backend): resolve connection timeout (#15)
 - docs(readme): update installation guide (#8)
 ```
 
-### 5. PR 规范
+### 5. PR Guidelines
 
-**PR 标题**: `[#Issue编号] 简短描述`
+**PR Title**: `[#IssueNumber] Short description`
 
-**PR 描述模板**:
+**PR Description Template**:
 ```markdown
-## 关联 Issue
+## Related Issue
 Closes #xxx
 
-## 变更内容
-- 变更点 1
-- 变更点 2
+## Changes
+- Change 1
+- Change 2
 
-## 测试说明
-- [ ] 单元测试通过
-- [ ] 集成测试通过
-- [ ] 手动测试完成
+## Testing
+- [ ] Unit tests pass
+- [ ] Integration tests pass
+- [ ] Manual testing complete
 
-## 截图/录屏 (如适用)
+## Screenshots/Recordings (if applicable)
 ```
 
 ---
 
-## 项目规范
+## Project Standards
 
-### 技术栈
+### Tech Stack
 
-- **区块链**: Sui Network
-- **主要语言**: TypeScript / Rust (待定)
-- **包管理**: pnpm / cargo (待定)
+- **Blockchain**: Sui Network
+- **Primary Language**: TypeScript
+- **Package Manager**: npm/pnpm
 
-### 目录结构 (规划)
+### Directory Structure
 
 ```
 SuiLancet/
-├── src/                    # 源代码
-│   ├── wallet/            # 钱包管理模块
-│   ├── backend/           # 后端服务模块
-│   ├── config/            # 配置管理
-│   └── utils/             # 工具函数
-├── tests/                  # 测试文件
-├── docs/                   # 文档
-├── scripts/                # 脚本工具
-└── .github/               # GitHub 配置
+├── src/                    # Source code
+│   ├── client.ts          # Core client
+│   ├── cli.ts             # CLI tool
+│   ├── common/            # Utility functions
+│   ├── methods/           # Business methods
+│   ├── movecall/          # Move call wrappers
+│   └── types/             # Type definitions
+├── tests/                  # Test files
+├── docs/                   # Documentation
+├── web/                    # Web UI
+└── .github/               # GitHub configuration
     ├── workflows/         # CI/CD
-    └── ISSUE_TEMPLATE/    # Issue 模板
+    └── ISSUE_TEMPLATE/    # Issue templates
 ```
 
-### 代码规范
+### Code Standards
 
-1. **命名规范**
-   - 文件名: `kebab-case.ts`
-   - 类名: `PascalCase`
-   - 函数/变量: `camelCase`
-   - 常量: `UPPER_SNAKE_CASE`
+1. **Naming Convention**
+   - Files: `kebab-case.ts`
+   - Classes: `PascalCase`
+   - Functions/Variables: `camelCase`
+   - Constants: `UPPER_SNAKE_CASE`
 
-2. **代码风格**
-   - 使用 ESLint + Prettier (TypeScript)
-   - 使用 rustfmt + clippy (Rust)
-   - 单文件不超过 300 行
-   - 函数不超过 50 行
+2. **Code Style**
+   - Use ESLint + Prettier (TypeScript)
+   - Single file should not exceed 300 lines
+   - Functions should not exceed 50 lines
 
-3. **注释规范**
-   - 公共 API 必须有 JSDoc/RustDoc
-   - 复杂逻辑添加行内注释
-   - TODO 格式: `// TODO(#issue): description`
+3. **Comments**
+   - Public APIs must have JSDoc
+   - Add inline comments for complex logic
+   - TODO format: `// TODO(#issue): description`
 
-### 测试规范
+### Testing Standards
 
-- 单元测试覆盖率目标: > 80%
-- 关键路径必须有集成测试
-- 测试文件命名: `*.test.ts` 或 `*_test.rs`
+- Unit test coverage target: > 80%
+- Critical paths must have integration tests
+- Test file naming: `*.test.ts`
 
-### 安全规范
+### Security Guidelines
 
-- 私钥/助记词绝不能硬编码或提交到仓库
-- 敏感配置使用环境变量
-- 定期更新依赖，修复安全漏洞
-
----
-
-## Claude 协作指南
-
-### 任务处理流程
-
-1. **接收任务时**: 首先确认关联的 Issue 编号
-2. **开发时**: 在对应的 feature 分支工作
-3. **提交时**: Commit message 必须引用 Issue
-4. **完成时**: 创建 PR 并关联 Issue
-
-### 代码修改原则
-
-- 先阅读相关代码，理解上下文
-- 最小化改动，只做必要的修改
-- 不引入不必要的重构或"改进"
-- 保持代码风格一致性
-
-### 禁止事项
-
-- 不提交包含敏感信息的代码
-- 不直接推送到 main 分支
-- 不创建没有 Issue 关联的功能分支
-- 不忽略测试失败
+- Never hardcode private keys or mnemonics
+- Use environment variables for sensitive config
+- Regularly update dependencies and fix vulnerabilities
 
 ---
 
-## 常用命令 (待补充)
+## Claude Collaboration Guide
+
+### Task Processing Flow
+
+1. **Receiving tasks**: First confirm the associated Issue number
+2. **During development**: Work on the corresponding feature branch
+3. **When committing**: Commit message must reference Issue
+4. **On completion**: Create PR and link Issue
+
+### Code Modification Principles
+
+- Read related code first, understand context
+- Minimize changes, only make necessary modifications
+- Don't introduce unnecessary refactoring or "improvements"
+- Maintain code style consistency
+
+### Prohibited Actions
+
+- Don't commit code containing sensitive information
+- Don't push directly to main branch
+- Don't create feature branches without Issue association
+- Don't ignore test failures
+
+---
+
+## Common Commands
 
 ```bash
-# 开发
-# pnpm dev / cargo run
+# Development
+npm run dev
 
-# 测试
-# pnpm test / cargo test
+# Testing
+npm test
 
-# 构建
-# pnpm build / cargo build --release
+# Build
+npm run build
 
-# 代码检查
-# pnpm lint / cargo clippy
+# Linting
+npm run lint
 ```
 
 ---
 
-## 版本发布
+## Version Release
 
-遵循语义化版本 (Semantic Versioning):
-- **MAJOR**: 不兼容的 API 变更
-- **MINOR**: 向后兼容的新功能
-- **PATCH**: 向后兼容的 Bug 修复
+Follow Semantic Versioning:
+- **MAJOR**: Incompatible API changes
+- **MINOR**: Backward-compatible new features
+- **PATCH**: Backward-compatible bug fixes
 
 ---
 
-*最后更新: 2026-01-15*
+*Last updated: 2026-01-15*

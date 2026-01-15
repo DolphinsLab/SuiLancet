@@ -137,7 +137,7 @@ describe("coin module", () => {
 
     console.log(coins.length)
 
-    // 50个一组打印
+    // Print in groups of 100
     const groupSize = 100
     for (let i = 0; i < coins.length; i += groupSize) {
       const group = coins.slice(i, i + groupSize)
@@ -152,7 +152,7 @@ describe("coin module", () => {
       "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
     const coins = await getSpecialAmountCoins(client, amount, amount, coinType)
 
-    // 40个一组打印
+    // Print in groups of 100
     const groupSize = 100
     for (let i = 0; i < coins.length; i += groupSize) {
       const group = coins.slice(i, i + groupSize)

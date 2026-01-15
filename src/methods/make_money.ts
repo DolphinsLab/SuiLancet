@@ -144,7 +144,7 @@ export async function circle_swap(
       deep_type,
       sui_type,
       1
-    ) // sui0 是 0
+    ) // sui0 is 0
 
     const deep0 = res[0]
     const sui0 = res[1]

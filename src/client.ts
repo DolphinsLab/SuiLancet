@@ -123,7 +123,7 @@ export class SuiScriptClient {
       throw new Error("No coins provided")
     }
 
-    // 按余额从大到小排序
+    // Sort by balance descending
     const sortedCoins = [...coins].sort(
       (a, b) => Number(b.balance) - Number(a.balance)
     )
@@ -131,7 +131,7 @@ export class SuiScriptClient {
     let selectedCoins: CoinObject[] = []
     let totalAmount = 0n
 
-    // 选择足够数量的硬币
+    // Select enough coins
     for (const coin of sortedCoins) {
       selectedCoins.push(coin)
       totalAmount += BigInt(coin.balance)
