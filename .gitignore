@@ -1,3 +1,16 @@
+# Dependencies
+node_modules/
 /node_modules
-.env
+
+# Build outputs
+dist/
 /dist
+*.tsbuildinfo
+
+# Environment
+.env
+
+# Generated files
+*.d.ts
+!src/**/*.d.ts
+vite.config.js
