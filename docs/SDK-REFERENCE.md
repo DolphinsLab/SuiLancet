@@ -12,13 +12,13 @@
 4. [项目模块](#项目模块)
    - [Cetus Protocol](#cetus-protocol)
    - [DeepBook V3](#deepbook-v3)
-   - [Blub Ambassador](#blub-ambassador)
-   - [Nave Lending](#nave-lending)
    - [Suilend](#suilend)
    - [Margin Trading](#margin-trading)
    - [HoneyPot](#honeypot)
    - [Vault](#vault)
-5. [CLI 命令参考](#cli-命令参考)
+5. [交易模拟与签名](#交易模拟与签名)
+6. [CLI 命令参考](#cli-命令参考)
+7. [前端应用 (Web UI)](#前端应用-web-ui)
 
 ---
 
@@ -42,18 +42,17 @@ src/
 │   ├── destory_honny.ts   # HoneyPot 交易
 │   ├── cetus/             # Cetus 相关
 │   ├── deepbookv3/        # DeepBook V3 相关
-│   ├── blub/              # Blub Ambassador
-│   ├── nave/              # Nave Lending
 │   ├── suilend/           # Suilend 测试币
 │   └── margin_trading/    # 保证金交易
+├── transaction/       # 交易模拟与签名
+│   ├── simulator.ts       # 交易模拟器
+│   └── signer.ts          # 交易签名
 └── movecall/          # Move 合约调用封装
     ├── coin.ts            # 通用 Coin 操作
     ├── vault.ts           # Vault 合约调用
     ├── ns.ts              # NS Token Swap
     ├── cetus/             # Cetus 合约
     ├── deepbookv3/        # DeepBook 合约
-    ├── blub/              # Blub 合约
-    ├── nave/              # Nave 合约
     ├── suilend/           # Suilend 合约
     ├── margin-trading/    # 保证金合约
     └── honny-hot/         # HoneyPot 合约
@@ -423,88 +422,6 @@ async function withdraw_deep_fee_from_aggregator_vault(
 
 ---
 
-### Blub Ambassador
-
-Blub Ambassador NFT 系统集成。
-
-**文件**: `src/movecall/blub/ambassador.ts`, `src/methods/blub/ambassador.ts`
-
-#### Movecall 函数
-
-| 函数 | 说明 |
-|------|------|
-| `query_ambassador_by_owner_movecall(txb, owner, env)` | 查询 Ambassador |
-| `create_ambassador_movecall(txb, env)` | 创建 Ambassador |
-| `query_ambassador_wait_claimed_rewards_movecall(txb, ambassador_id, env)` | 查询待领取奖励 |
-
-#### Methods 函数
-
-```typescript
-// 查询 Ambassador ID
-async function query_ambassador_by_owner(
-  client: SuiScriptClient,
-  owner: string,
-  env: string
-): Promise<string>
-
-// 创建 Ambassador
-async function create_ambassador(
-  client: SuiScriptClient,
-  env: string
-): Promise<void>
-
-// 获取支付信息
-async function get_payment_info(
-  client: SuiScriptClient,
-  ambassador_id: string,
-  env: string
-): Promise<{
-  payment_every_week: number,
-  wait_claimed_rewards: number,
-  payment_history: Map<number, PaymentHistory>
-}>
-
-// 查询待领取奖励
-async function query_ambassador_wait_claimed_rewards(
-  client: SuiScriptClient,
-  ambassador_id: string,
-  env: string
-): Promise<number>
-```
-
-**PaymentHistory 类型**:
-```typescript
-type PaymentHistory = {
-  timestamp: number
-  amount: number
-  coin_type: string
-  usd_amount: number
-  calculated_pool_id: string
-}
-```
-
----
-
-### Nave Lending
-
-Nave 借贷协议集成。
-
-**文件**: `src/movecall/nave/lending.ts`, `src/methods/nave/lending.ts`
-
-#### 函数
-
-```typescript
-// Movecall: 创建账户能力
-function createAccountCapMoveCall(txb: Transaction): TransactionObjectArgument
-
-// Methods: 创建账户
-async function createAccountCap(client: SuiScriptClient): Promise<void>
-```
-
-**合约地址**: `0x834a86970ae93a73faf4fff16ae40bdb72b91c47be585fff19a2af60a19ddca3`
-
----
-
 ### Suilend
 
 Suilend 测试币水龙头。
@@ -788,6 +705,121 @@ async function circle_swap(
 
 **路径**: SUI → DEEP (DeepBook) → USDC (DeepBook) → SUI (Cetus)
 
+---
+
+## 交易模拟与签名
+
+用于模拟执行和签名 Base64 编码的 TransactionData。
+
+**文件**: `src/transaction/simulator.ts`, `src/transaction/signer.ts`
+
+### 交易模拟器
+
+#### simulateTransaction
+
+模拟执行 Base64 编码的交易数据。
+
+```typescript
+interface SimulationResult {
+  success: boolean
+  gasUsed: string
+  effects: TransactionEffects
+  events: SuiEvent[]
+  error?: string
+}
+
+async function simulateTransaction(
+  client: SuiClient,
+  txBase64: string,
+  sender: string
+): Promise<SimulationResult>
+```
+
+**参数**:
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `client` | `SuiClient` | Sui 客户端实例 |
+| `txBase64` | `string` | Base64 编码的 TransactionData |
+| `sender` | `string` | 发送者地址 |
+
+**返回值**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `success` | `boolean` | 模拟是否成功 |
+| `gasUsed` | `string` | 预估 Gas 消耗 |
+| `effects` | `TransactionEffects` | 交易效果 |
+| `events` | `SuiEvent[]` | 触发的事件 |
+| `error` | `string?` | 错误信息 (如有) |
+
+#### parseTransactionData
+
+解析 Base64 编码的交易数据。
+
+```typescript
+interface ParsedTransaction {
+  sender: string
+  gasData: GasData
+  commands: TransactionCommand[]
+  inputs: TransactionInput[]
+}
+
+function parseTransactionData(txBase64: string): ParsedTransaction
+```
+
+### 交易签名器
+
+#### signTransaction
+
+签名 Base64 编码的交易数据。
+
+```typescript
+interface SignedTransaction {
+  txBytes: string      // 签名后的交易字节
+  signature: string    // 签名
+}
+
+async function signTransaction(
+  keypair: Ed25519Keypair,
+  txBase64: string
+): Promise<SignedTransaction>
+```
+
+#### signAndExecuteTransaction
+
+签名并执行交易。
+
+```typescript
+async function signAndExecuteTransaction(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  txBase64: string
+): Promise<SuiTransactionBlockResponse>
+```
+
+### 使用示例
+
+```typescript
+import { simulateTransaction, signAndExecuteTransaction } from './transaction'
+
+// 1. 模拟交易
+const txBase64 = "AAA..." // Base64 encoded transaction
+const simulation = await simulateTransaction(client, txBase64, senderAddress)
+
+if (simulation.success) {
+  console.log(`Gas 预估: ${simulation.gasUsed}`)
+
+  // 2. 签名并执行
+  const result = await signAndExecuteTransaction(client, keypair, txBase64)
+  console.log(`交易哈希: ${result.digest}`)
+} else {
+  console.error(`模拟失败: ${simulation.error}`)
+}
+```
+
+---
+
 #### 转账函数
 
 ```typescript
@@ -921,4 +953,70 @@ SUI_WALLET_PHRASE=<mnemonic-phrase>
 
 ---
 
-*文档版本: 0.0.8 | 最后更新: 2026-01-15*
+---
+
+## 前端应用 (Web UI)
+
+基于 React + Vite 构建的 Web 管理界面。
+
+### 技术栈
+
+- **框架**: React 18 + TypeScript
+- **构建工具**: Vite
+- **钱包连接**: @mysten/dapp-kit (Sui Wallet Kit)
+- **UI 组件**: TailwindCSS + Headless UI
+- **状态管理**: Zustand
+
+### 目录结构 (规划)
+
+```
+web/
+├── src/
+│   ├── components/        # 通用组件
+│   │   ├── Layout/       # 布局组件
+│   │   ├── WalletButton/ # 钱包连接按钮
+│   │   └── common/       # 公共 UI 组件
+│   ├── pages/            # 页面
+│   │   ├── Dashboard/    # 仪表盘
+│   │   ├── Coin/         # 代币管理
+│   │   ├── Transaction/  # 交易模拟/签名
+│   │   ├── Swap/         # DEX 交换
+│   │   ├── Vault/        # 金库管理
+│   │   └── Settings/     # 设置
+│   ├── hooks/            # 自定义 Hooks
+│   ├── stores/           # Zustand stores
+│   ├── services/         # API 服务
+│   └── utils/            # 工具函数
+├── public/
+├── index.html
+├── vite.config.ts
+├── tailwind.config.js
+└── package.json
+```
+
+### 功能模块
+
+| 模块 | 功能描述 |
+|------|----------|
+| **Dashboard** | 钱包概览、代币余额、最近交易 |
+| **Coin 管理** | 合并/分割/转移代币、销毁零值代币 |
+| **交易模拟** | 输入 Base64 TX 数据、模拟执行、查看结果 |
+| **交易签名** | 签名交易、执行交易 |
+| **DEX Swap** | Cetus/DeepBook 交换界面 |
+| **Vault** | 金库存取操作 |
+
+### 钱包集成
+
+```typescript
+import { WalletKitProvider, ConnectButton } from '@mysten/dapp-kit'
+
+// 支持的钱包
+// - Sui Wallet
+// - Suiet
+// - Ethos Wallet
+// - Martian Wallet
+```
+
+---
+
+*文档版本: 0.1.0 | 最后更新: 2026-01-15*
