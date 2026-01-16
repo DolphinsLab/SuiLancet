@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { useCurrentAccount, useSuiClientQuery, useSignAndExecuteTransaction } from '@mysten/dapp-kit'
+import { useState, useEffect } from 'react'
+import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
+import type { CoinStruct } from '@mysten/sui/client'
 
 type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransaction>['mutate']>[0]
 
@@ -8,27 +9,69 @@ type CoinAction = 'merge' | 'split' | 'transfer' | 'destroy'
 
 // Maximum coins that can be merged in a single transaction (1 primary + 2047 others)
 const MAX_MERGE_PER_TX = 2047
+// Maximum coins to fetch (matches max merge capability)
+const MAX_COINS_FETCH = 2048
 
 export default function Coin() {
   const account = useCurrentAccount()
+  const client = useSuiClient()
   const [action, setAction] = useState<CoinAction>('merge')
   const [selectedCoinType, setSelectedCoinType] = useState<string>('')
   const [transferAddress, setTransferAddress] = useState('')
   const [splitAmount, setSplitAmount] = useState('')
   const [mergeProgress, setMergeProgress] = useState<{ current: number; total: number } | null>(null)
+  const [coins, setCoins] = useState<CoinStruct[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
 
   const { mutate: signAndExecute, isPending } = useSignAndExecuteTransaction()
 
-  const { data: coins, refetch } = useSuiClientQuery(
-    'getAllCoins',
-    { owner: account?.address ?? '' },
-    { enabled: !!account }
-  )
+  // Fetch coins with pagination (max 2048)
+  const fetchAllCoins = async () => {
+    if (!account?.address) return
+
+    setIsLoading(true)
+    const allCoins: CoinStruct[] = []
+    let cursor: string | null | undefined = null
+
+    try {
+      do {
+        const response = await client.getAllCoins({
+          owner: account.address,
+          cursor: cursor,
+          limit: 50,
+        })
+        allCoins.push(...response.data)
+        cursor = response.hasNextPage ? response.nextCursor : null
+
+        // Stop if we've reached the max
+        if (allCoins.length >= MAX_COINS_FETCH) {
+          setHasMore(!!cursor)
+          break
+        }
+      } while (cursor)
+
+      setCoins(allCoins.slice(0, MAX_COINS_FETCH))
+      if (allCoins.length < MAX_COINS_FETCH) {
+        setHasMore(false)
+      }
+    } catch (error) {
+      console.error('Error fetching coins:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const refetch = fetchAllCoins
+
+  useEffect(() => {
+    fetchAllCoins()
+  }, [account?.address])
 
   const handleMergeCoins = async () => {
     if (!account || !selectedCoinType) return
 
-    const coinsOfType = coins?.data.filter(c => c.coinType === selectedCoinType) || []
+    const coinsOfType = coins.filter(c => c.coinType === selectedCoinType)
     if (coinsOfType.length < 2) {
       alert('Need at least 2 coins to merge')
       return
@@ -92,7 +135,7 @@ export default function Coin() {
   const handleTransfer = async () => {
     if (!account || !selectedCoinType || !transferAddress) return
 
-    const coinsOfType = coins?.data.filter(c => c.coinType === selectedCoinType) || []
+    const coinsOfType = coins.filter(c => c.coinType === selectedCoinType)
     if (coinsOfType.length === 0) {
       alert('No coins to transfer')
       return
@@ -126,17 +169,39 @@ export default function Coin() {
   }
 
   // Group coins by type
-  const coinsByType = coins?.data.reduce((acc, coin) => {
+  const coinsByType = coins.reduce((acc, coin) => {
     if (!acc[coin.coinType]) {
       acc[coin.coinType] = []
     }
     acc[coin.coinType].push(coin)
     return acc
-  }, {} as Record<string, typeof coins.data>) || {}
+  }, {} as Record<string, CoinStruct[]>)
+
+  const totalCoins = coins.length
+  const totalTypes = Object.keys(coinsByType).length
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-white">Coin Management</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-white">Coin Management</h1>
+        <div className="flex items-center gap-4">
+          <span className="text-gray-400 text-sm">
+            {isLoading ? 'Loading...' : (
+              <>
+                {totalCoins} coins in {totalTypes} types
+                {hasMore && <span className="text-yellow-400 ml-1">(showing first {MAX_COINS_FETCH})</span>}
+              </>
+            )}
+          </span>
+          <button
+            onClick={fetchAllCoins}
+            disabled={isLoading}
+            className="px-3 py-1 bg-slate-700 text-gray-300 rounded-lg hover:bg-slate-600 disabled:opacity-50"
+          >
+            {isLoading ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
+      </div>
 
       {/* Action Tabs */}
       <div className="flex space-x-2">
