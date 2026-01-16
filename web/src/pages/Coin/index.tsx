@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
 import type { CoinStruct } from '@mysten/sui/client'
+import { useToast } from '../../components/Toast'
 
 type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransaction>['mutate']>[0]
 
@@ -12,8 +13,8 @@ const MAX_ARGS_PER_CALL = 511  // 512 - 1 (for primary coin)
 const MAX_CALLS_PER_TX = 3     // Reduced from 4 to stay under 128KB tx size limit
 // Maximum coins that can be merged in a single transaction
 const MAX_MERGE_PER_TX = MAX_ARGS_PER_CALL * MAX_CALLS_PER_TX  // 1533
-// Maximum coins to fetch
-const MAX_COINS_FETCH = 2048
+// Maximum coins to fetch (no limit - fetch all)
+const MAX_COINS_FETCH = 10000
 // Maximum coins to split in a single transaction
 const MAX_SPLIT_PER_TX = MAX_ARGS_PER_CALL * MAX_CALLS_PER_TX  // 1533
 // SUI coin type
@@ -22,6 +23,7 @@ const SUI_COIN_TYPE = '0x0000000000000000000000000000000000000000000000000000000
 export default function Coin() {
   const account = useCurrentAccount()
   const client = useSuiClient()
+  const toast = useToast()
   const [action, setAction] = useState<CoinAction>('merge')
   const [selectedCoinType, setSelectedCoinType] = useState<string>('')
   const [transferAddress, setTransferAddress] = useState('')
@@ -81,7 +83,7 @@ export default function Coin() {
 
     const coinsOfType = coins.filter(c => c.coinType === selectedCoinType)
     if (coinsOfType.length < 2) {
-      alert('Need at least 2 coins to merge')
+      toast.warning('Cannot Merge', 'Need at least 2 coins to merge')
       return
     }
 
@@ -134,12 +136,12 @@ export default function Coin() {
         {
           onSuccess: () => {
             setMergeProgress({ current: 1, total: totalTxs })
-            alert(`Transaction 1/${totalTxs} completed. Please continue merging remaining coins.`)
+            toast.info('Batch Complete', `Transaction 1/${totalTxs} completed. Please continue merging remaining coins.`)
             refetch()
           },
           onError: (err) => {
             setMergeProgress(null)
-            alert(`Error: ${err.message}`)
+            toast.error('Transaction Failed', err.message)
           },
         }
       )
@@ -152,11 +154,11 @@ export default function Coin() {
       {
         onSuccess: () => {
           const callCount = Math.ceil(otherCoins.length / MAX_ARGS_PER_CALL)
-          alert(`Successfully merged ${coinsOfType.length} coins into one! (${callCount} mergeCoins call${callCount > 1 ? 's' : ''})`)
+          toast.success('Merge Successful', `Merged ${coinsOfType.length} coins into one (${callCount} call${callCount > 1 ? 's' : ''})`)
           setMergeProgress(null)
           refetch()
         },
-        onError: (err) => alert(`Error: ${err.message}`),
+        onError: (err) => toast.error('Merge Failed', err.message),
       }
     )
   }
@@ -166,7 +168,7 @@ export default function Coin() {
 
     const coinsOfType = coins.filter(c => c.coinType === selectedCoinType)
     if (coinsOfType.length === 0) {
-      alert('No coins to transfer')
+      toast.warning('Cannot Transfer', 'No coins to transfer')
       return
     }
 
@@ -180,10 +182,10 @@ export default function Coin() {
       { transaction: txb } as unknown as TransactionInput,
       {
         onSuccess: () => {
-          alert('Transfer successful!')
+          toast.success('Transfer Successful', 'All coins have been transferred')
           refetch()
         },
-        onError: (err) => alert(`Error: ${err.message}`),
+        onError: (err) => toast.error('Transfer Failed', err.message),
       }
     )
   }
@@ -195,7 +197,7 @@ export default function Coin() {
     const count = parseInt(splitCount, 10)
 
     if (count <= 0 || count > MAX_SPLIT_PER_TX) {
-      alert(`Count must be between 1 and ${MAX_SPLIT_PER_TX}`)
+      toast.warning('Invalid Count', `Count must be between 1 and ${MAX_SPLIT_PER_TX}`)
       return
     }
 
@@ -204,7 +206,7 @@ export default function Coin() {
     const totalBalance = coinsOfType.reduce((sum, c) => sum + BigInt(c.balance), 0n)
 
     if (totalBalance < totalRequired) {
-      alert(`Insufficient balance. Required: ${totalRequired}, Available: ${totalBalance}`)
+      toast.error('Insufficient Balance', `Required: ${(Number(totalRequired) / 1e9).toFixed(4)}, Available: ${(Number(totalBalance) / 1e9).toFixed(4)}`)
       return
     }
 
@@ -215,7 +217,7 @@ export default function Coin() {
     const sourceCoin = sortedCoins[0]
 
     if (BigInt(sourceCoin.balance) < totalRequired) {
-      alert(`Largest coin (${sourceCoin.balance}) is smaller than required (${totalRequired}). Please merge coins first.`)
+      toast.warning('Need to Merge First', `Largest coin (${(Number(sourceCoin.balance) / 1e9).toFixed(4)}) is smaller than required (${(Number(totalRequired) / 1e9).toFixed(4)}). Please merge coins first.`)
       return
     }
 
@@ -241,12 +243,12 @@ export default function Coin() {
       { transaction: txb } as unknown as TransactionInput,
       {
         onSuccess: () => {
-          alert(`Successfully split into ${count} coins of ${amount} each! (${callCount} splitCoins call${callCount > 1 ? 's' : ''})`)
+          toast.success('Split Successful', `Split into ${count} coins of ${(Number(amount) / 1e9).toFixed(4)} each (${callCount} call${callCount > 1 ? 's' : ''})`)
           setSplitAmount('')
           setSplitCount('')
           refetch()
         },
-        onError: (err) => alert(`Error: ${err.message}`),
+        onError: (err) => toast.error('Split Failed', err.message),
       }
     )
   }
