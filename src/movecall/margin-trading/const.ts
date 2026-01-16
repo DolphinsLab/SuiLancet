@@ -8,11 +8,9 @@ export type MarginTradingConfig = {
   versioned: string
 }
 
-// set pre and mainnet
-
 export const marginTradingConfig = new Map<string, MarginTradingConfig>()
 
-// 设置 pre-mainnet 配置
+// Pre-mainnet config
 marginTradingConfig.set("pre-mainnet", {
   adminCap:
     "0xdd80fba8dec1260df452ad85d5aed4d44c1abf12b53c70b3b0f1962cb03f34f3",
@@ -22,7 +20,7 @@ marginTradingConfig.set("pre-mainnet", {
   versioned: "",
 })
 
-// 设置 mainnet 配置
+// Mainnet config
 marginTradingConfig.set("mainnet", {
   adminCap:
     "0x5056062528bfac02d34f25b623ed6e34b4cd36fdaf6608e4bd593a13207f9b59",

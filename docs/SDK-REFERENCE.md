@@ -1,136 +1,133 @@
-# SuiLancet SDK 功能文档
+# SuiLancet SDK Reference
 
-> 基于 `@mysten/sui` 构建的 Sui 区块链多项目交互工具集
+> Multi-project interaction toolkit for Sui blockchain, built on `@mysten/sui`
 
 ---
 
-## 目录
+## Table of Contents
 
-1. [架构概览](#架构概览)
-2. [核心模块 (Core)](#核心模块-core)
-3. [公共 Coin 处理模块](#公共-coin-处理模块)
-4. [项目模块](#项目模块)
+1. [Architecture Overview](#architecture-overview)
+2. [Core Module](#core-module)
+3. [Coin Processing Module](#coin-processing-module)
+4. [Project Modules](#project-modules)
    - [Cetus Protocol](#cetus-protocol)
    - [DeepBook V3](#deepbook-v3)
    - [Suilend](#suilend)
    - [Margin Trading](#margin-trading)
    - [HoneyPot](#honeypot)
    - [Vault](#vault)
-5. [交易模拟与签名](#交易模拟与签名)
-6. [CLI 命令参考](#cli-命令参考)
-7. [前端应用 (Web UI)](#前端应用-web-ui)
+5. [Transaction Simulation & Signing](#transaction-simulation--signing)
+6. [CLI Reference](#cli-reference)
+7. [Web Application](#web-application)
 
 ---
 
-## 架构概览
+## Architecture Overview
 
 ```
 src/
-├── client.ts          # 核心客户端类
-├── cli.ts             # CLI 命令行工具
-├── index.ts           # 统一导出
-├── common/            # 公共工具函数
-│   ├── coin.ts        # Coin 地址格式化
-│   ├── keypair.ts     # 密钥对处理
-│   └── object.ts      # Object 引用获取
-├── types/             # 类型定义
-│   └── coin.ts        # CoinObject 类型
-├── methods/           # 高级业务方法
-│   ├── process_coin.ts    # Coin 批量处理
-│   ├── vault.ts           # Vault 操作
-│   ├── make_money.ts      # 套利/转账
-│   ├── destory_honny.ts   # HoneyPot 交易
-│   ├── cetus/             # Cetus 相关
-│   ├── deepbookv3/        # DeepBook V3 相关
-│   ├── suilend/           # Suilend 测试币
-│   └── margin_trading/    # 保证金交易
-├── transaction/       # 交易模拟与签名
-│   ├── simulator.ts       # 交易模拟器
-│   └── signer.ts          # 交易签名
-└── movecall/          # Move 合约调用封装
-    ├── coin.ts            # 通用 Coin 操作
-    ├── vault.ts           # Vault 合约调用
+├── client.ts          # Core client class
+├── cli.ts             # CLI tool
+├── index.ts           # Unified exports
+├── common/            # Utility functions
+│   ├── coin.ts        # Coin address formatting
+│   ├── keypair.ts     # Keypair handling
+│   └── object.ts      # Object reference retrieval
+├── types/             # Type definitions
+│   └── coin.ts        # CoinObject type
+├── methods/           # High-level business methods
+│   ├── process_coin.ts    # Coin batch processing
+│   ├── vault.ts           # Vault operations
+│   ├── make_money.ts      # Arbitrage/transfers
+│   ├── destory_honny.ts   # HoneyPot trading
+│   ├── cetus/             # Cetus related
+│   ├── deepbookv3/        # DeepBook V3 related
+│   ├── suilend/           # Suilend test coins
+│   └── margin_trading/    # Margin trading
+└── movecall/          # Move contract call wrappers
+    ├── coin.ts            # Generic coin operations
+    ├── vault.ts           # Vault contract calls
     ├── ns.ts              # NS Token Swap
-    ├── cetus/             # Cetus 合约
-    ├── deepbookv3/        # DeepBook 合约
-    ├── suilend/           # Suilend 合约
-    ├── margin-trading/    # 保证金合约
-    └── honny-hot/         # HoneyPot 合约
+    ├── cetus/             # Cetus contracts
+    ├── deepbookv3/        # DeepBook contracts
+    ├── suilend/           # Suilend contracts
+    ├── margin-trading/    # Margin contracts
+    └── honny-hot/         # HoneyPot contracts
 ```
 
 ---
 
-## 核心模块 (Core)
+## Core Module
 
 ### SuiScriptClient
 
-主客户端类，封装 Sui 网络交互。
+Main client class encapsulating Sui network interactions.
 
-**文件**: `src/client.ts`
+**File**: `src/client.ts`
 
 ```typescript
 class SuiScriptClient {
-  endpoint: string           // RPC 端点
-  client: SuiClient         // Sui 客户端实例
-  walletAddress: string     // 钱包地址
+  endpoint: string           // RPC endpoint
+  client: SuiClient         // Sui client instance
+  walletAddress: string     // Wallet address
 
   constructor(env: "testnet" | "pre-mainnet" | "mainnet")
 }
 ```
 
-#### 构造函数
+#### Constructor
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `env` | `"testnet" \| "pre-mainnet" \| "mainnet"` | 网络环境 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `env` | `"testnet" \| "pre-mainnet" \| "mainnet"` | Network environment |
 
-**环境变量要求**:
+**Required Environment Variables**:
 - `SUI_ENDPOINT_TESTNET` / `SUI_ENDPOINT_PRE_MAINNET` / `SUI_ENDPOINT_MAINNET`
-- `SUI_WALLET_SECRET` 或 `SUI_WALLET_PHRASE`
+- `SUI_WALLET_SECRET` or `SUI_WALLET_PHRASE`
 
-#### 方法列表
+#### Methods
 
-| 方法 | 返回值 | 说明 |
-|------|--------|------|
-| `getAllCoins()` | `Promise<CoinObject[]>` | 获取钱包所有代币 |
-| `getCoinsByType(coinType)` | `Promise<CoinObject[]>` | 按类型获取代币 |
-| `getCoinsByTypeV2(coinType)` | `Promise<CoinObject[]>` | 按类型获取代币 (优化版) |
-| `buildInputCoin(coins, amount, txb)` | `Promise<TransactionObjectArgument>` | 构建指定金额的输入 Coin |
-| `signAndExecuteTransaction(txb)` | `Promise<SuiTransactionBlockResponse>` | 签名并执行交易 |
-| `devInspectTransactionBlock(txb)` | `Promise<DevInspectResults>` | 模拟执行交易 |
-| `sendTransaction(txb)` | `Promise<SuiTransactionBlockResponse>` | 发送交易 (含模拟检查) |
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `getAllCoins()` | `Promise<CoinObject[]>` | Get all wallet coins |
+| `getCoinsByType(coinType)` | `Promise<CoinObject[]>` | Get coins by type |
+| `getCoinsByTypeV2(coinType)` | `Promise<CoinObject[]>` | Get coins by type (optimized) |
+| `buildInputCoin(coins, amount, txb)` | `Promise<TransactionObjectArgument>` | Build input coin for specified amount |
+| `signAndExecuteTransaction(txb)` | `Promise<SuiTransactionBlockResponse>` | Sign and execute transaction |
+| `devInspectTransactionBlock(txb)` | `Promise<DevInspectResults>` | Simulate transaction execution |
+| `sendTransaction(txb)` | `Promise<SuiTransactionBlockResponse>` | Send transaction (with simulation check) |
 
 ---
 
-### 类型定义
+### Type Definitions
 
-**文件**: `src/types/coin.ts`
+**File**: `src/types/coin.ts`
 
 ```typescript
 type CoinObject = {
-  objectId: string    // Coin 对象 ID
-  coinType: string    // 完整的 Coin 类型
-  balance: number     // 余额
+  objectId: string    // Coin object ID
+  coinType: string    // Full coin type
+  balance: number     // Balance
 }
 ```
 
 ---
 
-## 公共 Coin 处理模块
+## Coin Processing Module
 
-### Common 工具函数
+### Common Utilities
 
-**文件**: `src/common/`
+**File**: `src/common/`
 
 #### completionCoin
 
-补全 Coin 类型地址为 64 位十六进制格式。
+Complete coin type address to 64-character hex format.
 
 ```typescript
 function completionCoin(s: string): string
 ```
 
-**示例**:
+**Example**:
 ```typescript
 completionCoin("0x2::sui::SUI")
 // => "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
@@ -138,7 +135,7 @@ completionCoin("0x2::sui::SUI")
 
 #### getKeypairFromSecret
 
-从 Base64 编码的密钥创建 Ed25519Keypair。
+Create Ed25519Keypair from Base64-encoded secret.
 
 ```typescript
 function getKeypairFromSecret(secret: string): Ed25519Keypair
@@ -146,7 +143,7 @@ function getKeypairFromSecret(secret: string): Ed25519Keypair
 
 #### getObjectRef
 
-获取对象的完整引用 (用于 Gas 支付等)。
+Get complete object reference (for gas payment, etc.).
 
 ```typescript
 async function getObjectRef(client: SuiScriptClient, objectId: string): Promise<ObjectRef>
@@ -154,7 +151,7 @@ async function getObjectRef(client: SuiScriptClient, objectId: string): Promise<
 
 #### sleep
 
-异步延时函数。
+Async delay function.
 
 ```typescript
 function sleep(ms: number): Promise<void>
@@ -162,27 +159,27 @@ function sleep(ms: number): Promise<void>
 
 ---
 
-### Movecall - Coin 操作
+### Movecall - Coin Operations
 
-**文件**: `src/movecall/coin.ts`
+**File**: `src/movecall/coin.ts`
 
-| 函数 | 说明 |
-|------|------|
-| `destoryZeroCoin(txb, objectId, coinType)` | 销毁余额为 0 的 Coin |
-| `destoryZeroCoinArg(txb, object, coinType)` | 销毁 Coin (参数形式) |
-| `transferOrDestoryCoin(txb, coin, coinType)` | 转移或销毁 Coin |
-| `mintZeroCoin(txb, coinType)` | 创建零值 Coin |
-| `checkCoinThreshold(txb, coin, coinType, amountLimit, env)` | 检查 Coin 数量阈值 |
+| Function | Description |
+|----------|-------------|
+| `destoryZeroCoin(txb, objectId, coinType)` | Destroy zero-balance coin |
+| `destoryZeroCoinArg(txb, object, coinType)` | Destroy coin (argument form) |
+| `transferOrDestoryCoin(txb, coin, coinType)` | Transfer or destroy coin |
+| `mintZeroCoin(txb, coinType)` | Create zero-value coin |
+| `checkCoinThreshold(txb, coin, coinType, amountLimit, env)` | Check coin amount threshold |
 
 ---
 
-### Methods - Coin 批量处理
+### Methods - Coin Batch Processing
 
-**文件**: `src/methods/process_coin.ts`
+**File**: `src/methods/process_coin.ts`
 
 #### batchDestoryZeroCoin
 
-批量销毁余额为 0 的代币。
+Batch destroy zero-balance coins.
 
 ```typescript
 async function batchDestoryZeroCoin(
@@ -194,7 +191,7 @@ async function batchDestoryZeroCoin(
 
 #### getSpecialAmountCoins
 
-获取指定余额范围内的代币。
+Get coins within specified balance range.
 
 ```typescript
 async function getSpecialAmountCoins(
@@ -207,7 +204,7 @@ async function getSpecialAmountCoins(
 
 #### batchSplitSuiCoins
 
-批量分割 SUI 代币。
+Batch split SUI coins.
 
 ```typescript
 async function batchSplitSuiCoins(
@@ -219,7 +216,7 @@ async function batchSplitSuiCoins(
 
 #### batchSplitSpecialCoins
 
-批量分割指定代币。
+Batch split specified coins.
 
 ```typescript
 async function batchSplitSpecialCoins(
@@ -232,7 +229,7 @@ async function batchSplitSpecialCoins(
 
 #### mergeCoins
 
-合并同类型代币。
+Merge coins of same type.
 
 ```typescript
 async function mergeCoins(
@@ -244,7 +241,7 @@ async function mergeCoins(
 
 #### mergeCoinsAndTransfer
 
-合并代币并转移到指定地址。
+Merge coins and transfer to specified address.
 
 ```typescript
 async function mergeCoinsAndTransfer(
@@ -257,7 +254,7 @@ async function mergeCoinsAndTransfer(
 
 #### batchTransferZeroCoin
 
-批量转移代币到指定地址。
+Batch transfer coins to specified address.
 
 ```typescript
 async function batchTransferZeroCoin(
@@ -268,7 +265,7 @@ async function batchTransferZeroCoin(
 
 #### batchTransferCoin
 
-批量转移指定类型代币。
+Batch transfer specified type coins.
 
 ```typescript
 async function batchTransferCoin(
@@ -281,7 +278,7 @@ async function batchTransferCoin(
 
 #### transfer_all_sui_coins
 
-转移所有 SUI 到指定地址。
+Transfer all SUI to specified address.
 
 ```typescript
 async function transfer_all_sui_coins(
@@ -292,7 +289,7 @@ async function transfer_all_sui_coins(
 
 #### refuel_specifal_coin
 
-向指定 Coin 对象补充余额。
+Refuel specified coin object with balance.
 
 ```typescript
 async function refuel_specifal_coin(
@@ -306,56 +303,56 @@ async function refuel_specifal_coin(
 
 ---
 
-## 项目模块
+## Project Modules
 
 ### Cetus Protocol
 
-Cetus DEX 交易协议集成。
+Cetus DEX trading protocol integration.
 
-**文件**: `src/movecall/cetus/swap.ts`, `src/methods/cetus/tick.ts`
+**Files**: `src/movecall/cetus/swap.ts`, `src/methods/cetus/tick.ts`
 
-#### Swap 函数
+#### Swap Functions
 
-| 函数 | 说明 |
-|------|------|
-| `cetus_swap_a2b_movecall(txb, pool, coin_a, coin_a_type, coin_b_type, env)` | A 代币换 B 代币 |
-| `cetus_swap_b2a_movecall(txb, pool, coin_b, coin_a_type, coin_b_type, env)` | B 代币换 A 代币 |
+| Function | Description |
+|----------|-------------|
+| `cetus_swap_a2b_movecall(txb, pool, coin_a, coin_a_type, coin_b_type, env)` | Swap token A to B |
+| `cetus_swap_b2a_movecall(txb, pool, coin_b, coin_a_type, coin_b_type, env)` | Swap token B to A |
 
-**参数说明**:
+**Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `txb` | `Transaction` | 交易构建器 |
-| `pool` | `string` | Cetus 池子地址 |
-| `coin_a/coin_b` | `TransactionObjectArgument` | 输入代币 |
-| `coin_a_type` | `string` | A 代币类型 |
-| `coin_b_type` | `string` | B 代币类型 |
-| `env` | `string` | 环境 (mainnet/testnet) |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `txb` | `Transaction` | Transaction builder |
+| `pool` | `string` | Cetus pool address |
+| `coin_a/coin_b` | `TransactionObjectArgument` | Input coin |
+| `coin_a_type` | `string` | Token A type |
+| `coin_b_type` | `string` | Token B type |
+| `env` | `string` | Environment (mainnet/testnet) |
 
-#### Tick 查询
+#### Tick Query
 
 ```typescript
 async function getTicksByRpc(poolId: string): Promise<any>
 ```
 
-从 Cetus API 获取池子 Tick 数据。
+Get pool tick data from Cetus API.
 
 ---
 
 ### DeepBook V3
 
-DeepBook V3 订单簿 DEX 集成。
+DeepBook V3 order book DEX integration.
 
-**文件**: `src/movecall/deepbookv3/`, `src/methods/deepbookv3/`
+**Files**: `src/movecall/deepbookv3/`, `src/methods/deepbookv3/`
 
-#### 核心 Swap 函数
+#### Core Swap Functions
 
-| 函数 | 说明 |
-|------|------|
-| `swap_exact_base_for_quote_movecall(...)` | Base 代币换 Quote 代币 |
-| `swap_exact_quote_for_base_movecall(...)` | Quote 代币换 Base 代币 |
+| Function | Description |
+|----------|-------------|
+| `swap_exact_base_for_quote_movecall(...)` | Swap base token for quote |
+| `swap_exact_quote_for_base_movecall(...)` | Swap quote token for base |
 
-**参数**:
+**Parameters**:
 ```typescript
 function swap_exact_base_for_quote_movecall(
   txb: Transaction,
@@ -368,51 +365,51 @@ function swap_exact_base_for_quote_movecall(
 ): TransactionObjectArgument[]
 ```
 
-#### DEEP Fee 管理
+#### DEEP Fee Management
 
-| 函数 | 说明 |
-|------|------|
-| `withdraw_deep_fee_from_deepbookv3utils_movecall(...)` | 从 Utils 提取 DEEP 费用 |
-| `deposit_deep_fee_to_deepbookv3_utils(...)` | 存入 DEEP 费用 |
-| `withdraw_deep_fee_from_aggregator_movecall(...)` | 从 Aggregator 提取 DEEP |
-| `deposit_deep_fee_to_aggregator_vault_movecall(...)` | 存入 Aggregator Vault |
+| Function | Description |
+|----------|-------------|
+| `withdraw_deep_fee_from_deepbookv3utils_movecall(...)` | Withdraw DEEP fee from Utils |
+| `deposit_deep_fee_to_deepbookv3_utils(...)` | Deposit DEEP fee |
+| `withdraw_deep_fee_from_aggregator_movecall(...)` | Withdraw DEEP from Aggregator |
+| `deposit_deep_fee_to_aggregator_vault_movecall(...)` | Deposit to Aggregator Vault |
 
-#### 白名单管理
+#### Whitelist Management
 
-| 函数 | 说明 |
-|------|------|
-| `add_into_whitelist_movecall(txb, pool_id, env)` | 添加池子到白名单 |
-| `remove_from_whitelist_movecall(txb, pool_id, env)` | 从白名单移除 |
-| `add_sponsor_whitelist_address_movecall(...)` | 添加赞助白名单地址 |
-| `remove_sponsor_whitelist_address_movecall(...)` | 移除赞助白名单地址 |
+| Function | Description |
+|----------|-------------|
+| `add_into_whitelist_movecall(txb, pool_id, env)` | Add pool to whitelist |
+| `remove_from_whitelist_movecall(txb, pool_id, env)` | Remove from whitelist |
+| `add_sponsor_whitelist_address_movecall(...)` | Add sponsor whitelist address |
+| `remove_sponsor_whitelist_address_movecall(...)` | Remove sponsor whitelist address |
 
-#### 配置管理
+#### Configuration Management
 
-| 函数 | 说明 |
-|------|------|
-| `update_package_version_movecall(txb, new_version, env)` | 更新包版本 |
-| `set_alternative_payment_movecall(txb, env, is_open)` | 设置替代支付 |
-| `update_sponsor_fee_limit_movecall(...)` | 更新赞助费用限制 |
-| `init_sponsor_fee_record_movecall(txb, env)` | 初始化赞助费用记录 |
+| Function | Description |
+|----------|-------------|
+| `update_package_version_movecall(txb, new_version, env)` | Update package version |
+| `set_alternative_payment_movecall(txb, env, is_open)` | Set alternative payment |
+| `update_sponsor_fee_limit_movecall(...)` | Update sponsor fee limit |
+| `init_sponsor_fee_record_movecall(txb, env)` | Initialize sponsor fee record |
 
-#### Methods 层封装
+#### Methods Layer Wrappers
 
 ```typescript
-// 初始化白名单
+// Initialize whitelist
 async function init_aggregator_deepbookv3_whitelist(
   client: SuiScriptClient,
   pools: string[],
   env: string
 ): Promise<void>
 
-// 存入 DEEP 费用 (按金额)
+// Deposit DEEP fee by amount
 async function deposit_deep_fee_by_amount(
   client: SuiScriptClient,
   amount: bigint,
   env: string
 ): Promise<void>
 
-// 提取 DEEP 费用
+// Withdraw DEEP fee
 async function withdraw_deep_fee_from_aggregator_vault(
   client: SuiScriptClient,
   amount: string,
@@ -424,21 +421,21 @@ async function withdraw_deep_fee_from_aggregator_vault(
 
 ### Suilend
 
-Suilend 测试币水龙头。
+Suilend test coin faucet.
 
-**文件**: `src/movecall/suilend/steammfe_test_coin.ts`, `src/methods/suilend/steammfe_test_coin.ts`
+**Files**: `src/movecall/suilend/steammfe_test_coin.ts`, `src/methods/suilend/steammfe_test_coin.ts`
 
-#### 函数
+#### Functions
 
 ```typescript
-// Movecall: 获取测试币
+// Movecall: Get test coin
 function get_test_coin_movecall(
   txb: Transaction,
   coin_type: string,
   amount: number
 ): TransactionObjectArgument
 
-// Methods: 获取 Steammfe 测试币
+// Methods: Get Steammfe test coin
 async function get_steammfe_test_coin(
   client: SuiScriptClient,
   coin_type: string,
@@ -447,7 +444,7 @@ async function get_steammfe_test_coin(
 ): Promise<void>
 ```
 
-**支持的测试币类型**:
+**Supported Test Coin Types**:
 - `0x2e868e44010e06c0fc925d29f35029b6ef75a50e03d997585980fb2acea45ec6::sui::SUI`
 - `0x2e868e44010e06c0fc925d29f35029b6ef75a50e03d997585980fb2acea45ec6::usdc::USDC`
 
@@ -455,11 +452,11 @@ async function get_steammfe_test_coin(
 
 ### Margin Trading
 
-保证金交易系统。
+Margin trading system.
 
-**文件**: `src/movecall/margin-trading/`, `src/methods/margin_trading/`
+**Files**: `src/movecall/margin-trading/`, `src/methods/margin_trading/`
 
-#### 配置
+#### Configuration
 
 ```typescript
 const MARGIN_TRADING_PUBLISHED_AT = "0xc41dca0f7de9e155862521e4d73386e2a45049c5c3c3fa6033525473fa6c634d"
@@ -472,11 +469,11 @@ type MarginTradingConfig = {
 }
 ```
 
-**环境配置**:
-- `pre-mainnet`: 预主网配置
-- `mainnet`: 主网配置
+**Environment Configs**:
+- `pre-mainnet`: Pre-mainnet configuration
+- `mainnet`: Mainnet configuration
 
-#### 创建市场
+#### Create Market
 
 ```typescript
 type CreateMarketParams = {
@@ -495,17 +492,17 @@ async function createMarket(
 ): Promise<void>
 ```
 
-#### 更新市场配置
+#### Update Market Configuration
 
 ```typescript
-// 更新杠杆倍数
+// Update leverage
 async function updateMarketMaxLeverage(
   client: SuiScriptClient,
   env: string,
   params: UpdateMarketMaxLeverageParams
 ): Promise<void>
 
-// 更新费率
+// Update fee rate
 async function updateMarketOpenFeeRate(
   client: SuiScriptClient,
   env: string,
@@ -513,17 +510,17 @@ async function updateMarketOpenFeeRate(
 ): Promise<void>
 ```
 
-#### 管理功能
+#### Admin Functions
 
 ```typescript
-// 转移 Admin Cap
+// Transfer Admin Cap
 async function transferAdminCap(
   client: SuiScriptClient,
   env: string,
   address: string
 ): Promise<void>
 
-// 转移对象
+// Transfer object
 async function transferObject(
   client: SuiScriptClient,
   env: string,
@@ -536,11 +533,11 @@ async function transferObject(
 
 ### HoneyPot
 
-HoneyPot 代币交易 (通过 Cetus)。
+HoneyPot token trading (via Cetus).
 
-**文件**: `src/movecall/honny-hot/swap.ts`, `src/methods/destory_honny.ts`
+**Files**: `src/movecall/honny-hot/swap.ts`, `src/methods/destory_honny.ts`
 
-#### 配置
+#### Configuration
 
 ```typescript
 type HoneyConfig = {
@@ -549,24 +546,19 @@ type HoneyConfig = {
 }
 ```
 
-**预置配置**:
-- APU
-- FROGS
-- PAC
-- BOBO
-- NUMOGRAM
+**Preset Configs**: APU, FROGS, PAC, BOBO, NUMOGRAM
 
-#### Movecall 函数
+#### Movecall Functions
 
 ```typescript
-// 买入 HoneyPot 代币
+// Buy HoneyPot token
 function buy_honey_pot(
   txb: Transaction,
   honey_config: HoneyConfig,
   amount: number
 ): TransactionObjectArgument
 
-// 卖出 HoneyPot 代币
+// Sell HoneyPot token
 function sell_honey_pot(
   txb: Transaction,
   amount_limit: number,
@@ -574,10 +566,10 @@ function sell_honey_pot(
 ): TransactionObjectArgument
 ```
 
-#### Methods 函数
+#### Methods Functions
 
 ```typescript
-// 循环卖出 HoneyPot 代币
+// Loop sell HoneyPot tokens
 async function destory_honny(
   client: SuiScriptClient,
   coin_type: string
@@ -588,11 +580,11 @@ async function destory_honny(
 
 ### Vault
 
-代币金库管理。
+Token vault management.
 
-**文件**: `src/movecall/vault.ts`, `src/methods/vault.ts`
+**Files**: `src/movecall/vault.ts`, `src/methods/vault.ts`
 
-#### 合约地址
+#### Contract Addresses
 
 ```typescript
 const vault_published_at = "0x9ef0375d2c22479b97cd0b578798b00d84bb29300e95c12814d1eb870093bdae"
@@ -600,10 +592,10 @@ const vault = "0x22e87e53f184eaf1d74fde61ee78e1d96346f9ba350976181fc4013dceb20f7
 const admin_cap = "0xef22a227d75f2ee6aa51e6b1205d6054b53e424118307ffaf656456832dfabc3"
 ```
 
-#### Movecall 函数
+#### Movecall Functions
 
 ```typescript
-// 存入金库
+// Deposit to vault
 async function deposit_movecall(
   txb: Transaction,
   coin_object_id: string,
@@ -611,24 +603,24 @@ async function deposit_movecall(
   amount: number
 ): Promise<void>
 
-// 从金库提取
+// Withdraw from vault
 function withdraw_movecall(
   txb: Transaction,
   coin_type: string,
   amount: number
 ): TransactionObjectArgument
 
-// 急救包 (批量处理)
+// First aid packet (batch processing)
 function first_aid_packet_movecall(
   txb: Transaction,
   coins: string[]
 ): void
 ```
 
-#### Methods 函数
+#### Methods Functions
 
 ```typescript
-// 存入金库
+// Deposit to vault
 async function deposit_into_vault(
   client: SuiScriptClient,
   coin_object_id: string,
@@ -636,7 +628,7 @@ async function deposit_into_vault(
   amount: number
 ): Promise<void>
 
-// 从金库提取并转移
+// Withdraw from vault and transfer
 async function withdraw_from_vault(
   client: SuiScriptClient,
   coin_type: string,
@@ -645,7 +637,7 @@ async function withdraw_from_vault(
   gas?: string
 ): Promise<void>
 
-// 急救包
+// First aid packet
 async function first_aid_packet(
   client: SuiScriptClient,
   coins: string[],
@@ -657,9 +649,9 @@ async function first_aid_packet(
 
 ### NS Token Swap
 
-NS Token 多跳交换 (Turbos + FlowX CLMM)。
+NS Token multi-hop swap (Turbos + FlowX CLMM).
 
-**文件**: `src/movecall/ns.ts`
+**File**: `src/movecall/ns.ts`
 
 ```typescript
 async function ns_swap_movecall(
@@ -670,13 +662,13 @@ async function ns_swap_movecall(
 ): Promise<void>
 ```
 
-**路径**: SUI → NS (Turbos) → SUI (FlowX CLMM)
+**Path**: SUI → NS (Turbos) → SUI (FlowX CLMM)
 
 ---
 
-### 套利/转账方法
+### Arbitrage/Transfer Methods
 
-**文件**: `src/methods/make_money.ts`
+**File**: `src/methods/make_money.ts`
 
 #### Swap + Market Order
 
@@ -693,7 +685,7 @@ async function swap_then_place_market_order(
 ): Promise<void>
 ```
 
-#### 循环套利
+#### Circle Arbitrage
 
 ```typescript
 async function circle_swap(
@@ -703,21 +695,21 @@ async function circle_swap(
 ): Promise<void>
 ```
 
-**路径**: SUI → DEEP (DeepBook) → USDC (DeepBook) → SUI (Cetus)
+**Path**: SUI → DEEP (DeepBook) → USDC (DeepBook) → SUI (Cetus)
 
 ---
 
-## 交易模拟与签名
+## Transaction Simulation & Signing
 
-用于模拟执行和签名 Base64 编码的 TransactionData。
+For simulating and signing Base64-encoded TransactionData.
 
-**文件**: `src/transaction/simulator.ts`, `src/transaction/signer.ts`
+**Files**: `src/transaction/simulator.ts`, `src/transaction/signer.ts`
 
-### 交易模拟器
+### Transaction Simulator
 
 #### simulateTransaction
 
-模拟执行 Base64 编码的交易数据。
+Simulate Base64-encoded transaction data.
 
 ```typescript
 interface SimulationResult {
@@ -735,27 +727,27 @@ async function simulateTransaction(
 ): Promise<SimulationResult>
 ```
 
-**参数**:
+**Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `client` | `SuiClient` | Sui 客户端实例 |
-| `txBase64` | `string` | Base64 编码的 TransactionData |
-| `sender` | `string` | 发送者地址 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `client` | `SuiClient` | Sui client instance |
+| `txBase64` | `string` | Base64-encoded TransactionData |
+| `sender` | `string` | Sender address |
 
-**返回值**:
+**Returns**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `success` | `boolean` | 模拟是否成功 |
-| `gasUsed` | `string` | 预估 Gas 消耗 |
-| `effects` | `TransactionEffects` | 交易效果 |
-| `events` | `SuiEvent[]` | 触发的事件 |
-| `error` | `string?` | 错误信息 (如有) |
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | `boolean` | Whether simulation succeeded |
+| `gasUsed` | `string` | Estimated gas consumption |
+| `effects` | `TransactionEffects` | Transaction effects |
+| `events` | `SuiEvent[]` | Triggered events |
+| `error` | `string?` | Error message (if any) |
 
 #### parseTransactionData
 
-解析 Base64 编码的交易数据。
+Parse Base64-encoded transaction data.
 
 ```typescript
 interface ParsedTransaction {
@@ -768,16 +760,16 @@ interface ParsedTransaction {
 function parseTransactionData(txBase64: string): ParsedTransaction
 ```
 
-### 交易签名器
+### Transaction Signer
 
 #### signTransaction
 
-签名 Base64 编码的交易数据。
+Sign Base64-encoded transaction data.
 
 ```typescript
 interface SignedTransaction {
-  txBytes: string      // 签名后的交易字节
-  signature: string    // 签名
+  txBytes: string      // Signed transaction bytes
+  signature: string    // Signature
 }
 
 async function signTransaction(
@@ -788,7 +780,7 @@ async function signTransaction(
 
 #### signAndExecuteTransaction
 
-签名并执行交易。
+Sign and execute transaction.
 
 ```typescript
 async function signAndExecuteTransaction(
@@ -798,39 +790,39 @@ async function signAndExecuteTransaction(
 ): Promise<SuiTransactionBlockResponse>
 ```
 
-### 使用示例
+### Usage Example
 
 ```typescript
 import { simulateTransaction, signAndExecuteTransaction } from './transaction'
 
-// 1. 模拟交易
+// 1. Simulate transaction
 const txBase64 = "AAA..." // Base64 encoded transaction
 const simulation = await simulateTransaction(client, txBase64, senderAddress)
 
 if (simulation.success) {
-  console.log(`Gas 预估: ${simulation.gasUsed}`)
+  console.log(`Gas estimate: ${simulation.gasUsed}`)
 
-  // 2. 签名并执行
+  // 2. Sign and execute
   const result = await signAndExecuteTransaction(client, keypair, txBase64)
-  console.log(`交易哈希: ${result.digest}`)
+  console.log(`Transaction digest: ${result.digest}`)
 } else {
-  console.error(`模拟失败: ${simulation.error}`)
+  console.error(`Simulation failed: ${simulation.error}`)
 }
 ```
 
 ---
 
-#### 转账函数
+#### Transfer Functions
 
 ```typescript
-// 按对象 ID 转移
+// Transfer by object ID
 async function transfer_coin(
   client: SuiScriptClient,
   coin_object_id: string,
   address: string
 ): Promise<void>
 
-// 按代币类型和金额转移
+// Transfer by coin type and amount
 async function transfer_coin_by_coin_type(
   client: SuiScriptClient,
   coin_type: string,
@@ -838,7 +830,7 @@ async function transfer_coin_by_coin_type(
   amount: number
 ): Promise<void>
 
-// 批量转移对象
+// Batch transfer objects
 async function transfer_objects(
   client: SuiScriptClient,
   objects: string[],
@@ -848,98 +840,98 @@ async function transfer_objects(
 
 ---
 
-## CLI 命令参考
+## CLI Reference
 
-**文件**: `src/cli.ts`
+**File**: `src/cli.ts`
 
-### 全局选项
+### Global Options
 
 ```bash
 cetus-cli [options] [command]
 
 Options:
-  -e, --env <env>     网络环境 (testnet, pre-mainnet, mainnet) (default: "mainnet")
-  -d, --debug         启用调试模式
-  -V, --version       输出版本号
-  -h, --help          显示帮助信息
+  -e, --env <env>     Network environment (testnet, pre-mainnet, mainnet) (default: "mainnet")
+  -d, --debug         Enable debug mode
+  -V, --version       Show version number
+  -h, --help          Show help information
 ```
 
-### 代币命令 (coin)
+### Coin Commands
 
 ```bash
-# 销毁零余额代币
+# Destroy zero-balance coins
 cetus-cli coin destroy-zero [-g <gasBudget>] [--gas-object <id>]
 
-# 分割 SUI
+# Split SUI
 cetus-cli coin split-sui -a <amounts>
 
-# 分割指定代币
+# Split specified coin
 cetus-cli coin split-coin -i <coinId> -a <amounts>
 
-# 合并代币
+# Merge coins
 cetus-cli coin merge -t <coinType>
 
-# 转移代币
+# Transfer coin
 cetus-cli coin transfer -i <coinId> -r <recipient>
 
-# 按类型转移
+# Transfer by type
 cetus-cli coin transfer-by-type -t <coinType> -r <recipient> -a <amount>
 
-# 转移所有 SUI
+# Transfer all SUI
 cetus-cli coin transfer-all-sui -r <recipient>
 
-# 批量转移
+# Batch transfer
 cetus-cli coin batch-transfer -r <recipient> -t <coinType> -a <amount>
 
-# 获取特定金额范围代币
+# Get coins in amount range
 cetus-cli coin get-special-amount --min <amount> --max <amount> -t <coinType>
 ```
 
-### 金库命令 (vault)
+### Vault Commands
 
 ```bash
-# 提取代币
+# Withdraw coins
 cetus-cli vault withdraw -t <coinType> -a <amount>
 
-# 急救包
+# First aid packet
 cetus-cli vault first-aid -c <coins> [--gas-object <id>]
 ```
 
-### 对象命令 (object)
+### Object Commands
 
 ```bash
-# 转移对象
+# Transfer objects
 cetus-cli object transfer -o <objects> -r <recipient>
 ```
 
-### 查询命令 (query)
+### Query Commands
 
 ```bash
-# 钱包信息
+# Wallet info
 cetus-cli query wallet-info
 
-# 查询余额
+# Query balance
 cetus-cli query balance [-t <coinType>]
 ```
 
 ---
 
-## 环境变量配置
+## Environment Variables
 
 ```bash
-# RPC 端点
+# RPC Endpoints
 SUI_ENDPOINT_TESTNET=https://...
 SUI_ENDPOINT_PRE_MAINNET=https://...
 SUI_ENDPOINT_MAINNET=https://...
 
-# 钱包配置 (二选一)
+# Wallet Configuration (choose one)
 SUI_WALLET_SECRET=<base64-encoded-secret>
 SUI_WALLET_PHRASE=<mnemonic-phrase>
 ```
 
 ---
 
-## 依赖说明
+## Dependencies
 
 ```json
 {
@@ -953,40 +945,38 @@ SUI_WALLET_PHRASE=<mnemonic-phrase>
 
 ---
 
----
+## Web Application
 
-## 前端应用 (Web UI)
+Web management interface built with React + Vite.
 
-基于 React + Vite 构建的 Web 管理界面。
+### Tech Stack
 
-### 技术栈
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Wallet Connection**: @mysten/dapp-kit (Sui Wallet Kit)
+- **UI Components**: TailwindCSS + Headless UI
+- **State Management**: Zustand
 
-- **框架**: React 18 + TypeScript
-- **构建工具**: Vite
-- **钱包连接**: @mysten/dapp-kit (Sui Wallet Kit)
-- **UI 组件**: TailwindCSS + Headless UI
-- **状态管理**: Zustand
-
-### 目录结构 (规划)
+### Directory Structure
 
 ```
 web/
 ├── src/
-│   ├── components/        # 通用组件
-│   │   ├── Layout/       # 布局组件
-│   │   ├── WalletButton/ # 钱包连接按钮
-│   │   └── common/       # 公共 UI 组件
-│   ├── pages/            # 页面
-│   │   ├── Dashboard/    # 仪表盘
-│   │   ├── Coin/         # 代币管理
-│   │   ├── Transaction/  # 交易模拟/签名
-│   │   ├── Swap/         # DEX 交换
-│   │   ├── Vault/        # 金库管理
-│   │   └── Settings/     # 设置
-│   ├── hooks/            # 自定义 Hooks
+│   ├── components/        # Common components
+│   │   ├── Layout/       # Layout component
+│   │   ├── WalletButton/ # Wallet connect button
+│   │   └── common/       # Common UI components
+│   ├── pages/            # Pages
+│   │   ├── Dashboard/    # Dashboard
+│   │   ├── Coin/         # Coin management
+│   │   ├── Transaction/  # Transaction simulation/signing
+│   │   ├── Swap/         # DEX swap
+│   │   ├── Vault/        # Vault management
+│   │   └── Settings/     # Settings
+│   ├── hooks/            # Custom hooks
 │   ├── stores/           # Zustand stores
-│   ├── services/         # API 服务
-│   └── utils/            # 工具函数
+│   ├── services/         # API services
+│   └── utils/            # Utility functions
 ├── public/
 ├── index.html
 ├── vite.config.ts
@@ -994,23 +984,23 @@ web/
 └── package.json
 ```
 
-### 功能模块
+### Feature Modules
 
-| 模块 | 功能描述 |
-|------|----------|
-| **Dashboard** | 钱包概览、代币余额、最近交易 |
-| **Coin 管理** | 合并/分割/转移代币、销毁零值代币 |
-| **交易模拟** | 输入 Base64 TX 数据、模拟执行、查看结果 |
-| **交易签名** | 签名交易、执行交易 |
-| **DEX Swap** | Cetus/DeepBook 交换界面 |
-| **Vault** | 金库存取操作 |
+| Module | Description |
+|--------|-------------|
+| **Dashboard** | Wallet overview, token balances, recent transactions |
+| **Coin Management** | Merge/split/transfer coins, destroy zero-balance coins |
+| **Transaction Simulation** | Input Base64 TX data, simulate execution, view results |
+| **Transaction Signing** | Sign transactions, execute transactions |
+| **DEX Swap** | Cetus/DeepBook swap interface |
+| **Vault** | Vault deposit/withdraw operations |
 
-### 钱包集成
+### Wallet Integration
 
 ```typescript
 import { WalletKitProvider, ConnectButton } from '@mysten/dapp-kit'
 
-// 支持的钱包
+// Supported wallets:
 // - Sui Wallet
 // - Suiet
 // - Ethos Wallet
@@ -1019,4 +1009,4 @@ import { WalletKitProvider, ConnectButton } from '@mysten/dapp-kit'
 
 ---
 
-*文档版本: 0.1.0 | 最后更新: 2026-01-15*
+*Document version: 0.1.0 | Last updated: 2026-01-15*

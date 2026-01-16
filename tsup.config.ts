@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup"
 
 export default defineConfig([
-  // 库文件构建配置
+  // Library build config
   {
     entry: ["src/index.ts"],
     format: ["cjs", "esm"],
@@ -10,7 +10,7 @@ export default defineConfig([
     sourcemap: true,
     clean: true,
   },
-  // CLI构建配置
+  // CLI build config
   {
     entry: ["src/cli.ts"],
     format: ["cjs"],

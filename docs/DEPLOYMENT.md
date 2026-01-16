@@ -1,31 +1,31 @@
-# SuiLancet 部署指南
+# SuiLancet Deployment Guide
 
-## 概述
+## Overview
 
-SuiLancet 前端使用 Cloudflare Pages 直连 GitHub 进行部署，支持 Dev 和 Prod 两个环境。
+SuiLancet frontend uses Cloudflare Pages with direct GitHub connection for deployment, supporting both Dev and Prod environments.
 
-## 环境说明
+## Environment Overview
 
-| 环境 | 分支 | 默认网络 | Cloudflare 项目 |
-|------|------|----------|-----------------|
+| Environment | Branch | Default Network | Cloudflare Project |
+|-------------|--------|-----------------|-------------------|
 | **Development** | `develop` | Testnet | `suilancet-dev` |
 | **Production** | `main` | Mainnet | `suilancet` |
 
-## Cloudflare Pages 配置
+## Cloudflare Pages Configuration
 
-### 1. 创建项目
+### 1. Create Project
 
-1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
-2. 进入 **Workers & Pages** → **Create application** → **Pages**
-3. 选择 **Connect to Git**
-4. 授权并选择 `DolphinsLab/SuiLancet` 仓库
+1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. Go to **Workers & Pages** → **Create application** → **Pages**
+3. Select **Connect to Git**
+4. Authorize and select `DolphinsLab/SuiLancet` repository
 
-### 2. 构建配置
+### 2. Build Configuration
 
-#### Dev 环境 (suilancet-dev)
+#### Dev Environment (suilancet-dev)
 
-| 设置 | 值 |
-|------|-----|
+| Setting | Value |
+|---------|-------|
 | Project name | `suilancet-dev` |
 | Production branch | `develop` |
 | Framework preset | `None` |
@@ -33,18 +33,18 @@ SuiLancet 前端使用 Cloudflare Pages 直连 GitHub 进行部署，支持 Dev 
 | Build command | `npm install && npm run build` |
 | Build output directory | `dist` |
 
-**环境变量:**
+**Environment Variables:**
 
-| 变量名 | 值 |
-|--------|-----|
+| Variable | Value |
+|----------|-------|
 | `NODE_VERSION` | `20` |
 | `VITE_APP_ENV` | `development` |
 | `VITE_DEFAULT_NETWORK` | `testnet` |
 
-#### Prod 环境 (suilancet)
+#### Prod Environment (suilancet)
 
-| 设置 | 值 |
-|------|-----|
+| Setting | Value |
+|---------|-------|
 | Project name | `suilancet` |
 | Production branch | `main` |
 | Framework preset | `None` |
@@ -52,111 +52,111 @@ SuiLancet 前端使用 Cloudflare Pages 直连 GitHub 进行部署，支持 Dev 
 | Build command | `npm install && npm run build` |
 | Build output directory | `dist` |
 
-**环境变量:**
+**Environment Variables:**
 
-| 变量名 | 值 |
-|--------|-----|
+| Variable | Value |
+|----------|-------|
 | `NODE_VERSION` | `20` |
 | `VITE_APP_ENV` | `production` |
 | `VITE_DEFAULT_NETWORK` | `mainnet` |
 
-## 配置检查清单
+## Configuration Checklist
 
-### 构建配置检查
+### Build Configuration Check
 
-- [ ] Root directory 设置为 `web`
-- [ ] Build command 为 `npm install && npm run build`
-- [ ] Build output directory 为 `dist`
-- [ ] Production branch 正确 (dev 用 `develop`, prod 用 `main`)
+- [ ] Root directory is set to `web`
+- [ ] Build command is `npm install && npm run build`
+- [ ] Build output directory is `dist`
+- [ ] Production branch is correct (dev uses `develop`, prod uses `main`)
 
-### 环境变量检查
+### Environment Variables Check
 
 - [ ] `NODE_VERSION` = `20`
-- [ ] `VITE_APP_ENV` 已设置
-- [ ] `VITE_DEFAULT_NETWORK` 已设置
+- [ ] `VITE_APP_ENV` is set
+- [ ] `VITE_DEFAULT_NETWORK` is set
 
-### 部署后验证
+### Post-Deployment Verification
 
-- [ ] 页面正常加载 (无白屏)
-- [ ] 控制台无报错
-- [ ] 钱包连接按钮显示
-- [ ] 默认网络正确 (Settings 页面查看)
-- [ ] 所有路由正常 (`/coin`, `/transaction` 等)
+- [ ] Page loads normally (no white screen)
+- [ ] No console errors
+- [ ] Wallet connect button displays
+- [ ] Default network is correct (check Settings page)
+- [ ] All routes work (`/coin`, `/transaction`, etc.)
 
-## 部署方式
+## Deployment Methods
 
-### 自动部署
+### Automatic Deployment
 
-推送代码到对应分支即可自动触发部署：
+Push code to the corresponding branch to trigger automatic deployment:
 
 ```bash
-# Dev 环境
+# Dev environment
 git push origin develop
 
-# Prod 环境
+# Prod environment
 git push origin main
 ```
 
-### 手动部署
+### Manual Deployment
 
-在 Cloudflare Pages 项目页面点击 **Retry deployment** 重新部署。
+Click **Retry deployment** on the Cloudflare Pages project page to redeploy.
 
-## 本地开发
+## Local Development
 
 ```bash
-# 进入前端目录
+# Enter frontend directory
 cd web
 
-# 复制环境变量文件
+# Copy environment variables file
 cp .env.example .env.local
 
-# 安装依赖
+# Install dependencies
 npm install
 
-# 启动开发服务器
+# Start development server
 npm run dev
 ```
 
-## 常见问题
+## Troubleshooting
 
-### 1. 构建失败 - 找不到 package.json
+### 1. Build Failed - Cannot find package.json
 
-**原因**: Root directory 未设置为 `web`
+**Cause**: Root directory not set to `web`
 
-**解决**: Settings → Builds → Root directory → 填入 `web`
+**Solution**: Settings → Builds → Root directory → Enter `web`
 
-### 2. 页面 404
+### 2. Page 404
 
-**原因**: SPA 路由未配置
+**Cause**: SPA routing not configured
 
-**解决**: 已添加 `web/public/_redirects` 文件，确保已提交
+**Solution**: `web/public/_redirects` file has been added, ensure it's committed
 
-### 3. 环境变量不生效
+### 3. Environment Variables Not Working
 
-**原因**: Vite 环境变量需要 `VITE_` 前缀
+**Cause**: Vite environment variables require `VITE_` prefix
 
-**解决**: 确保变量名以 `VITE_` 开头
+**Solution**: Ensure variable names start with `VITE_`
 
-### 4. 默认网络不对
+### 4. Wrong Default Network
 
-**检查方法**: 浏览器控制台执行
+**Check Method**: Execute in browser console:
 
 ```javascript
 console.log(import.meta.env.VITE_DEFAULT_NETWORK)
 ```
 
-## 自定义域名
+## Custom Domain
 
-在 Cloudflare Pages 项目中配置:
+Configure in Cloudflare Pages project:
 
-1. 进入项目 → Custom domains
-2. 添加域名
-3. 配置 DNS 记录
+1. Go to project → Custom domains
+2. Add domain
+3. Configure DNS records
 
-**推荐配置**:
+**Recommended Configuration**:
 - Dev: `dev.suilancet.com`
 - Prod: `suilancet.com` / `app.suilancet.com`
 
 ---
 
-*最后更新: 2026-01-15*
+*Last updated: 2026-01-15*
