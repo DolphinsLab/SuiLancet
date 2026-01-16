@@ -10,22 +10,11 @@ const ALLOWED_WALLETS: string[] = [
   '0x10e0cedcd78dc7d075f59744d2e161e22f1202d63f733d6f63f6325cba2ffdb7',
 ]
 
-// Trusted coin types (official/verified coins)
-const TRUSTED_COINS: Set<string> = new Set([
-  '0x2::sui::SUI',
-  '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
-  '0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN', // USDT
-  '0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN', // wUSDC
-  '0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN', // wETH
-  '0x027792d9fed7f9844eb4839566001bb6f6cb4804f66aa2da6fe1ee242d896881::coin::COIN', // wBTC
-])
-
 interface CoinBalance {
   coinType: string
   symbol: string
   totalBalance: bigint
   coinCount: number
-  isTrusted: boolean
 }
 
 interface VaultConfig {
@@ -123,13 +112,11 @@ export default function Vault() {
           existing.coinCount += 1
         } else {
           const symbol = coin.coinType.split('::').pop() || 'Unknown'
-          const isTrusted = TRUSTED_COINS.has(coin.coinType)
           balanceMap.set(coin.coinType, {
             coinType: coin.coinType,
             symbol,
             totalBalance: BigInt(coin.balance),
             coinCount: 1,
-            isTrusted,
           })
         }
       }
@@ -167,7 +154,6 @@ export default function Vault() {
 
   // Calculate total value (simplified - just show SUI equivalent placeholder)
   const totalCoins = balances.reduce((sum, b) => sum + b.coinCount, 0)
-  const unverifiedCount = balances.filter((b) => !b.isTrusted).length
 
   // Redirect or hide if wallet not connected or not authorized
   if (!account || !isWalletAllowed) {
@@ -243,7 +229,7 @@ export default function Vault() {
         <div className="space-y-4">
           {/* Summary Card */}
           <div className="card">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-gray-400 text-sm">Total Assets</p>
                 <p className="text-2xl font-bold text-white">{balances.length}</p>
@@ -253,13 +239,6 @@ export default function Vault() {
                 <p className="text-gray-400 text-sm">Total Coins</p>
                 <p className="text-2xl font-bold text-white">{totalCoins.toLocaleString()}</p>
                 <p className="text-gray-500 text-xs">objects</p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm">Unverified</p>
-                <p className={`text-2xl font-bold ${unverifiedCount > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                  {unverifiedCount}
-                </p>
-                <p className="text-gray-500 text-xs">tokens</p>
               </div>
               <div>
                 <p className="text-gray-400 text-sm">Wallet</p>
@@ -275,24 +254,6 @@ export default function Vault() {
               </div>
             </div>
           </div>
-
-          {/* Unverified Tokens Warning */}
-          {unverifiedCount > 0 && (
-            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <div>
-                  <h3 className="text-red-400 font-medium">Warning: Unverified Tokens Detected</h3>
-                  <p className="text-gray-400 text-sm mt-1">
-                    {unverifiedCount} token(s) in your wallet are not in the trusted list.
-                    These may be fake tokens (scam coins). Exercise caution and verify before interacting.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Balances Table */}
           <div className="card">
@@ -313,7 +274,6 @@ export default function Vault() {
                   <thead>
                     <tr className="border-b border-slate-700">
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Token</th>
-                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Status</th>
                       <th className="text-right py-3 px-4 text-gray-400 font-medium">Balance</th>
                       <th className="text-right py-3 px-4 text-gray-400 font-medium">Objects</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium hidden md:table-cell">Coin Type</th>
@@ -323,50 +283,20 @@ export default function Vault() {
                     {balances.map((balance) => (
                       <tr
                         key={balance.coinType}
-                        className={`border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors ${
-                          !balance.isTrusted ? 'bg-red-900/10' : ''
-                        }`}
+                        className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors"
                       >
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                              balance.isTrusted
-                                ? 'bg-gradient-to-br from-sui-500 to-sui-700'
-                                : 'bg-gradient-to-br from-red-500 to-red-700'
-                            }`}>
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sui-500 to-sui-700 flex items-center justify-center text-white font-bold text-sm">
                               {balance.symbol.charAt(0)}
                             </div>
                             <div>
-                              <div className="flex items-center gap-2">
-                                <p className="text-white font-medium">{balance.symbol}</p>
-                                {!balance.isTrusted && (
-                                  <span className="text-xs text-red-400" title="Unverified token - may be fake">
-                                    (Unverified)
-                                  </span>
-                                )}
-                              </div>
+                              <p className="text-white font-medium">{balance.symbol}</p>
                               <p className="text-gray-500 text-xs md:hidden truncate max-w-[120px]">
                                 {balance.coinType.split('::').slice(0, 2).join('::')}...
                               </p>
                             </div>
                           </div>
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          {balance.isTrusted ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400">
-                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Verified
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400" title="This token is not in the trusted list. Exercise caution.">
-                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              Caution
-                            </span>
-                          )}
                         </td>
                         <td className="py-4 px-4 text-right">
                           <p className="text-white font-mono">
