@@ -7,10 +7,15 @@ type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransactio
 
 type CoinAction = 'merge' | 'split' | 'transfer' | 'destroy'
 
-// Maximum coins that can be merged in a single transaction (1 primary + 2047 others)
-const MAX_MERGE_PER_TX = 2047
-// Maximum coins to fetch (matches max merge capability)
+// Sui limits: 512 arguments per MoveCall, 2048 per transaction
+const MAX_ARGS_PER_CALL = 511  // 512 - 1 (for primary coin)
+const MAX_CALLS_PER_TX = 4     // 2048 / 512 = 4 calls
+// Maximum coins that can be merged in a single transaction
+const MAX_MERGE_PER_TX = MAX_ARGS_PER_CALL * MAX_CALLS_PER_TX  // 2044
+// Maximum coins to fetch
 const MAX_COINS_FETCH = 2048
+// Maximum coins to split in a single transaction
+const MAX_SPLIT_PER_TX = MAX_ARGS_PER_CALL * MAX_CALLS_PER_TX  // 2044
 
 export default function Coin() {
   const account = useCurrentAccount()
@@ -81,47 +86,36 @@ export default function Coin() {
     const coinIds = coinsOfType.map(c => c.coinObjectId)
     const [primaryCoin, ...otherCoins] = coinIds
 
-    // If within single transaction limit, merge all at once
-    if (otherCoins.length <= MAX_MERGE_PER_TX) {
-      const txb = new Transaction()
+    // Build transaction with multiple mergeCoins calls if needed
+    const txb = new Transaction()
+
+    if (otherCoins.length <= MAX_ARGS_PER_CALL) {
+      // Single mergeCoins call
       txb.mergeCoins(primaryCoin, otherCoins)
-
-      signAndExecute(
-        { transaction: txb } as unknown as TransactionInput,
-        {
-          onSuccess: () => {
-            alert(`Successfully merged ${coinsOfType.length} coins into one!`)
-            refetch()
-          },
-          onError: (err) => alert(`Error: ${err.message}`),
-        }
-      )
+    } else if (otherCoins.length <= MAX_MERGE_PER_TX) {
+      // Multiple mergeCoins calls in single transaction
+      for (let i = 0; i < otherCoins.length; i += MAX_ARGS_PER_CALL) {
+        const batch = otherCoins.slice(i, i + MAX_ARGS_PER_CALL)
+        txb.mergeCoins(primaryCoin, batch)
+      }
     } else {
-      // Batch merge for large coin sets
-      const totalBatches = Math.ceil(otherCoins.length / MAX_MERGE_PER_TX)
-      setMergeProgress({ current: 0, total: totalBatches })
+      // Need multiple transactions
+      const totalTxs = Math.ceil(otherCoins.length / MAX_MERGE_PER_TX)
+      setMergeProgress({ current: 0, total: totalTxs })
 
-      // Create batches of coins to merge
-      const batches: string[][] = []
-      for (let i = 0; i < otherCoins.length; i += MAX_MERGE_PER_TX) {
-        batches.push(otherCoins.slice(i, i + MAX_MERGE_PER_TX))
+      // First transaction: merge first batch
+      const firstBatch = otherCoins.slice(0, MAX_MERGE_PER_TX)
+      for (let i = 0; i < firstBatch.length; i += MAX_ARGS_PER_CALL) {
+        const batch = firstBatch.slice(i, i + MAX_ARGS_PER_CALL)
+        txb.mergeCoins(primaryCoin, batch)
       }
 
-      // Execute first batch
-      const txb = new Transaction()
-      txb.mergeCoins(primaryCoin, batches[0])
-
       signAndExecute(
         { transaction: txb } as unknown as TransactionInput,
         {
           onSuccess: () => {
-            setMergeProgress({ current: 1, total: totalBatches })
-            if (totalBatches > 1) {
-              alert(`Batch 1/${totalBatches} completed. Please continue merging remaining coins.`)
-            } else {
-              alert(`Successfully merged ${coinsOfType.length} coins into one!`)
-              setMergeProgress(null)
-            }
+            setMergeProgress({ current: 1, total: totalTxs })
+            alert(`Transaction 1/${totalTxs} completed. Please continue merging remaining coins.`)
             refetch()
           },
           onError: (err) => {
@@ -130,7 +124,22 @@ export default function Coin() {
           },
         }
       )
+      return
     }
+
+    // Execute single transaction (covers both single call and multiple calls cases)
+    signAndExecute(
+      { transaction: txb } as unknown as TransactionInput,
+      {
+        onSuccess: () => {
+          const callCount = Math.ceil(otherCoins.length / MAX_ARGS_PER_CALL)
+          alert(`Successfully merged ${coinsOfType.length} coins into one! (${callCount} mergeCoins call${callCount > 1 ? 's' : ''})`)
+          setMergeProgress(null)
+          refetch()
+        },
+        onError: (err) => alert(`Error: ${err.message}`),
+      }
+    )
   }
 
   const handleTransfer = async () => {
@@ -166,8 +175,8 @@ export default function Coin() {
     const amount = BigInt(splitAmount)
     const count = parseInt(splitCount, 10)
 
-    if (count <= 0 || count > 500) {
-      alert('Count must be between 1 and 500')
+    if (count <= 0 || count > MAX_SPLIT_PER_TX) {
+      alert(`Count must be between 1 and ${MAX_SPLIT_PER_TX}`)
       return
     }
 
@@ -192,14 +201,28 @@ export default function Coin() {
     }
 
     const txb = new Transaction()
-    const amounts = Array(count).fill(amount)
-    txb.splitCoins(sourceCoin.coinObjectId, amounts)
 
+    if (count <= MAX_ARGS_PER_CALL) {
+      // Single splitCoins call
+      const amounts = Array(count).fill(amount)
+      txb.splitCoins(sourceCoin.coinObjectId, amounts)
+    } else {
+      // Multiple splitCoins calls in single transaction
+      let remaining = count
+      for (let i = 0; i < count; i += MAX_ARGS_PER_CALL) {
+        const batchSize = Math.min(MAX_ARGS_PER_CALL, remaining)
+        const amounts = Array(batchSize).fill(amount)
+        txb.splitCoins(sourceCoin.coinObjectId, amounts)
+        remaining -= batchSize
+      }
+    }
+
+    const callCount = Math.ceil(count / MAX_ARGS_PER_CALL)
     signAndExecute(
       { transaction: txb } as unknown as TransactionInput,
       {
         onSuccess: () => {
-          alert(`Successfully split into ${count} coins of ${amount} each!`)
+          alert(`Successfully split into ${count} coins of ${amount} each! (${callCount} splitCoins call${callCount > 1 ? 's' : ''})`)
           setSplitAmount('')
           setSplitCount('')
           refetch()
@@ -367,10 +390,10 @@ export default function Coin() {
                 />
               </div>
               <div>
-                <label className="block text-gray-400 text-sm mb-1">Number of coins</label>
+                <label className="block text-gray-400 text-sm mb-1">Number of coins (max {MAX_SPLIT_PER_TX})</label>
                 <input
                   type="text"
-                  placeholder="e.g. 10"
+                  placeholder={`e.g. 10 (max ${MAX_SPLIT_PER_TX})`}
                   value={splitCount}
                   onChange={(e) => setSplitCount(e.target.value.replace(/[^0-9]/g, ''))}
                   className="input w-full"
