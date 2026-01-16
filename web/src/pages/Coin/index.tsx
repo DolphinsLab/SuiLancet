@@ -7,15 +7,15 @@ type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransactio
 
 type CoinAction = 'merge' | 'split' | 'transfer' | 'destroy'
 
-// Sui limits: 512 arguments per MoveCall, 2048 per transaction
+// Sui limits: 512 arguments per MoveCall, 131072 bytes max tx size
 const MAX_ARGS_PER_CALL = 511  // 512 - 1 (for primary coin)
-const MAX_CALLS_PER_TX = 4     // 2048 / 512 = 4 calls
+const MAX_CALLS_PER_TX = 3     // Reduced from 4 to stay under 128KB tx size limit
 // Maximum coins that can be merged in a single transaction
-const MAX_MERGE_PER_TX = MAX_ARGS_PER_CALL * MAX_CALLS_PER_TX  // 2044
+const MAX_MERGE_PER_TX = MAX_ARGS_PER_CALL * MAX_CALLS_PER_TX  // 1533
 // Maximum coins to fetch
 const MAX_COINS_FETCH = 2048
 // Maximum coins to split in a single transaction
-const MAX_SPLIT_PER_TX = MAX_ARGS_PER_CALL * MAX_CALLS_PER_TX  // 2044
+const MAX_SPLIT_PER_TX = MAX_ARGS_PER_CALL * MAX_CALLS_PER_TX  // 1533
 // SUI coin type
 const SUI_COIN_TYPE = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
 
