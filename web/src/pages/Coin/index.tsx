@@ -11,6 +11,8 @@ type CoinAction = 'merge' | 'split' | 'transfer' | 'destroy'
 const MAX_MERGE_PER_TX = 2047
 // Maximum coins to fetch (matches max merge capability)
 const MAX_COINS_FETCH = 2048
+// Maximum coins to split in a single transaction (Sui limit: 512 arguments per command)
+const MAX_SPLIT_PER_TX = 256
 
 export default function Coin() {
   const account = useCurrentAccount()
@@ -166,8 +168,8 @@ export default function Coin() {
     const amount = BigInt(splitAmount)
     const count = parseInt(splitCount, 10)
 
-    if (count <= 0 || count > 500) {
-      alert('Count must be between 1 and 500')
+    if (count <= 0 || count > MAX_SPLIT_PER_TX) {
+      alert(`Count must be between 1 and ${MAX_SPLIT_PER_TX}`)
       return
     }
 
@@ -367,10 +369,10 @@ export default function Coin() {
                 />
               </div>
               <div>
-                <label className="block text-gray-400 text-sm mb-1">Number of coins</label>
+                <label className="block text-gray-400 text-sm mb-1">Number of coins (max {MAX_SPLIT_PER_TX})</label>
                 <input
                   type="text"
-                  placeholder="e.g. 10"
+                  placeholder={`e.g. 10 (max ${MAX_SPLIT_PER_TX})`}
                   value={splitCount}
                   onChange={(e) => setSplitCount(e.target.value.replace(/[^0-9]/g, ''))}
                   className="input w-full"
