@@ -155,6 +155,27 @@ SuiLancet/
 3. **When committing**: Commit message must reference Issue
 4. **On completion**: Create PR and link Issue
 
+### PR Creation Requirements
+
+**After completing any task, Claude MUST**:
+
+1. **Commit and push** all changes to the feature branch
+2. **Create a PR** using `gh pr create` command, OR
+3. **Provide PR creation link** if API access is unavailable:
+   ```
+   https://github.com/DolphinsLab/SuiLancet/compare/main...<branch-name>?expand=1
+   ```
+4. **Include in PR/link**:
+   - Clear title following commit convention
+   - Summary of changes
+   - List of modified files
+   - Test plan (if applicable)
+
+**PR Link Format**:
+```
+https://github.com/DolphinsLab/SuiLancet/compare/main...<branch>?expand=1&title=<url-encoded-title>
+```
+
 ### Code Modification Principles
 
 - Read related code first, understand context
@@ -198,4 +219,4 @@ Follow Semantic Versioning:
 
 ---
 
-*Last updated: 2026-01-15*
+*Last updated: 2026-01-16*
