@@ -2,15 +2,11 @@ import { ReactNode, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useCurrentAccount } from '@mysten/dapp-kit'
 import WalletButton from '../WalletButton'
+import { isWalletAllowedForVault } from '../../config/access'
 
 interface LayoutProps {
   children: ReactNode
 }
-
-// Wallet addresses allowed to access Vault Manager
-const VAULT_ALLOWED_WALLETS: string[] = [
-  '0x10e0cedcd78dc7d075f59744d2e161e22f1202d63f733d6f63f6325cba2ffdb7',
-]
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊', restricted: false },
@@ -26,13 +22,10 @@ export default function Layout({ children }: LayoutProps) {
   const account = useCurrentAccount()
 
   // Check if current wallet is allowed to access restricted pages
-  const isVaultAllowed = useMemo(() => {
-    if (!account?.address) return false
-    const normalizedAddress = account.address.toLowerCase()
-    return VAULT_ALLOWED_WALLETS.some(
-      (addr) => addr.toLowerCase() === normalizedAddress
-    )
-  }, [account?.address])
+  const isVaultAllowed = useMemo(
+    () => isWalletAllowedForVault(account?.address),
+    [account?.address]
+  )
 
   // Filter nav items based on wallet permissions
   const visibleNavItems = navItems.filter(

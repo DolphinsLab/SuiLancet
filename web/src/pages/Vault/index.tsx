@@ -2,13 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit'
 import type { CoinStruct } from '@mysten/sui/client'
 import { useToast } from '../../components/Toast'
+import { isWalletAllowedForVault } from '../../config/access'
 
 type VaultTab = 'balances' | 'deposit' | 'withdraw' | 'settings'
-
-// Wallet addresses allowed to access Vault Manager
-const ALLOWED_WALLETS: string[] = [
-  '0x10e0cedcd78dc7d075f59744d2e161e22f1202d63f733d6f63f6325cba2ffdb7',
-]
 
 interface CoinBalance {
   coinType: string
@@ -42,13 +38,10 @@ export default function Vault() {
   const [isLoading, setIsLoading] = useState(false)
 
   // Check if current wallet is allowed to access Vault Manager
-  const isWalletAllowed = useMemo(() => {
-    if (!account?.address) return false
-    const normalizedAddress = account.address.toLowerCase()
-    return ALLOWED_WALLETS.some(
-      (addr) => addr.toLowerCase() === normalizedAddress
-    )
-  }, [account?.address])
+  const isWalletAllowed = useMemo(
+    () => isWalletAllowedForVault(account?.address),
+    [account?.address]
+  )
 
   // Vault configuration
   const [config, setConfig] = useState<VaultConfig>(DEFAULT_CONFIG)
