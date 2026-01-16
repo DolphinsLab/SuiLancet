@@ -16,6 +16,8 @@ const MAX_MERGE_PER_TX = MAX_ARGS_PER_CALL * MAX_CALLS_PER_TX  // 2044
 const MAX_COINS_FETCH = 2048
 // Maximum coins to split in a single transaction
 const MAX_SPLIT_PER_TX = MAX_ARGS_PER_CALL * MAX_CALLS_PER_TX  // 2044
+// SUI coin type
+const SUI_COIN_TYPE = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
 
 export default function Coin() {
   const account = useCurrentAccount()
@@ -83,20 +85,37 @@ export default function Coin() {
       return
     }
 
-    const coinIds = coinsOfType.map(c => c.coinObjectId)
+    // Sort coins by balance (descending) to use largest as primary
+    const sortedCoins = [...coinsOfType].sort((a, b) =>
+      Number(BigInt(b.balance) - BigInt(a.balance))
+    )
+    const coinIds = sortedCoins.map(c => c.coinObjectId)
     const [primaryCoin, ...otherCoins] = coinIds
+
+    // Check if merging SUI coins - need to set gas payment
+    const isSuiCoin = selectedCoinType === SUI_COIN_TYPE ||
+      selectedCoinType.endsWith('::sui::SUI')
 
     // Build transaction with multiple mergeCoins calls if needed
     const txb = new Transaction()
 
+    // For SUI coins, set the primary coin as gas payment to avoid "No valid SUI" error
+    if (isSuiCoin) {
+      txb.setGasPayment([{
+        objectId: primaryCoin,
+        version: sortedCoins[0].version,
+        digest: sortedCoins[0].digest,
+      }])
+    }
+
     if (otherCoins.length <= MAX_ARGS_PER_CALL) {
       // Single mergeCoins call
-      txb.mergeCoins(primaryCoin, otherCoins)
+      txb.mergeCoins(isSuiCoin ? txb.gas : primaryCoin, otherCoins)
     } else if (otherCoins.length <= MAX_MERGE_PER_TX) {
       // Multiple mergeCoins calls in single transaction
       for (let i = 0; i < otherCoins.length; i += MAX_ARGS_PER_CALL) {
         const batch = otherCoins.slice(i, i + MAX_ARGS_PER_CALL)
-        txb.mergeCoins(primaryCoin, batch)
+        txb.mergeCoins(isSuiCoin ? txb.gas : primaryCoin, batch)
       }
     } else {
       // Need multiple transactions
@@ -107,7 +126,7 @@ export default function Coin() {
       const firstBatch = otherCoins.slice(0, MAX_MERGE_PER_TX)
       for (let i = 0; i < firstBatch.length; i += MAX_ARGS_PER_CALL) {
         const batch = firstBatch.slice(i, i + MAX_ARGS_PER_CALL)
-        txb.mergeCoins(primaryCoin, batch)
+        txb.mergeCoins(isSuiCoin ? txb.gas : primaryCoin, batch)
       }
 
       signAndExecute(
