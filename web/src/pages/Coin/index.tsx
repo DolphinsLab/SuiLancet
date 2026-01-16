@@ -19,6 +19,7 @@ export default function Coin() {
   const [selectedCoinType, setSelectedCoinType] = useState<string>('')
   const [transferAddress, setTransferAddress] = useState('')
   const [splitAmount, setSplitAmount] = useState('')
+  const [splitCount, setSplitCount] = useState('')
   const [mergeProgress, setMergeProgress] = useState<{ current: number; total: number } | null>(null)
   const [coins, setCoins] = useState<CoinStruct[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -152,6 +153,55 @@ export default function Coin() {
       {
         onSuccess: () => {
           alert('Transfer successful!')
+          refetch()
+        },
+        onError: (err) => alert(`Error: ${err.message}`),
+      }
+    )
+  }
+
+  const handleSplitCoins = async () => {
+    if (!account || !selectedCoinType || !splitAmount || !splitCount) return
+
+    const amount = BigInt(splitAmount)
+    const count = parseInt(splitCount, 10)
+
+    if (count <= 0 || count > 500) {
+      alert('Count must be between 1 and 500')
+      return
+    }
+
+    const totalRequired = amount * BigInt(count)
+    const coinsOfType = coins.filter(c => c.coinType === selectedCoinType)
+    const totalBalance = coinsOfType.reduce((sum, c) => sum + BigInt(c.balance), 0n)
+
+    if (totalBalance < totalRequired) {
+      alert(`Insufficient balance. Required: ${totalRequired}, Available: ${totalBalance}`)
+      return
+    }
+
+    // Find the largest coin to split from
+    const sortedCoins = [...coinsOfType].sort((a, b) =>
+      Number(BigInt(b.balance) - BigInt(a.balance))
+    )
+    const sourceCoin = sortedCoins[0]
+
+    if (BigInt(sourceCoin.balance) < totalRequired) {
+      alert(`Largest coin (${sourceCoin.balance}) is smaller than required (${totalRequired}). Please merge coins first.`)
+      return
+    }
+
+    const txb = new Transaction()
+    const amounts = Array(count).fill(amount)
+    txb.splitCoins(sourceCoin.coinObjectId, amounts)
+
+    signAndExecute(
+      { transaction: txb } as unknown as TransactionInput,
+      {
+        onSuccess: () => {
+          alert(`Successfully split into ${count} coins of ${amount} each!`)
+          setSplitAmount('')
+          setSplitCount('')
           refetch()
         },
         onError: (err) => alert(`Error: ${err.message}`),
@@ -302,18 +352,55 @@ export default function Coin() {
 
         {action === 'split' && (
           <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Amount to split (in smallest unit)"
-              value={splitAmount}
-              onChange={(e) => setSplitAmount(e.target.value)}
-              className="input w-full"
-            />
+            <p className="text-gray-400 text-sm">
+              Split a coin into multiple coins of equal amount.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Amount per coin</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 1000000000 (1 SUI)"
+                  value={splitAmount}
+                  onChange={(e) => setSplitAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Number of coins</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 10"
+                  value={splitCount}
+                  onChange={(e) => setSplitCount(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="input w-full"
+                />
+              </div>
+            </div>
+            {splitAmount && splitCount && (
+              <div className="bg-slate-700 rounded-lg p-3 text-sm">
+                <div className="flex justify-between text-gray-300">
+                  <span>Total required:</span>
+                  <span className="text-white font-mono">
+                    {(Number(BigInt(splitAmount || '0') * BigInt(splitCount || '0')) / 1e9).toFixed(4)} {selectedCoinType?.split('::').pop() || 'tokens'}
+                  </span>
+                </div>
+                {selectedCoinType && coinsByType[selectedCoinType] && (
+                  <div className="flex justify-between text-gray-300 mt-1">
+                    <span>Available:</span>
+                    <span className="text-white font-mono">
+                      {(coinsByType[selectedCoinType].reduce((sum, c) => sum + Number(c.balance), 0) / 1e9).toFixed(4)} {selectedCoinType.split('::').pop()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
             <button
-              disabled={isPending || !selectedCoinType || !splitAmount}
+              onClick={handleSplitCoins}
+              disabled={isPending || !selectedCoinType || !splitAmount || !splitCount}
               className="btn-primary w-full disabled:opacity-50"
             >
-              {isPending ? 'Processing...' : 'Split Coin'}
+              {isPending ? 'Processing...' : `Split into ${splitCount || '?'} coins`}
             </button>
           </div>
         )}
