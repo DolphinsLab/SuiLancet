@@ -1,22 +1,43 @@
-import { ReactNode } from 'react'
+import { ReactNode, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useCurrentAccount } from '@mysten/dapp-kit'
 import WalletButton from '../WalletButton'
 
 interface LayoutProps {
   children: ReactNode
 }
 
+// Wallet addresses allowed to access Vault Manager
+const VAULT_ALLOWED_WALLETS: string[] = [
+  '0x10e0cedcd78dc7d075f59744d2e161e22f1202d63f733d6f63f6325cba2ffdb7',
+]
+
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: '📊' },
-  { path: '/coin', label: 'Coin', icon: '🪙' },
-  { path: '/transaction', label: 'Transaction', icon: '📝' },
-  { path: '/swap', label: 'Swap', icon: '🔄' },
-  { path: '/vault', label: 'Vault', icon: '🏦' },
-  { path: '/settings', label: 'Settings', icon: '⚙️' },
+  { path: '/', label: 'Dashboard', icon: '📊', restricted: false },
+  { path: '/coin', label: 'Coin', icon: '🪙', restricted: false },
+  { path: '/transaction', label: 'Transaction', icon: '📝', restricted: false },
+  { path: '/swap', label: 'Swap', icon: '🔄', restricted: false },
+  { path: '/vault', label: 'Vault', icon: '🏦', restricted: true },
+  { path: '/settings', label: 'Settings', icon: '⚙️', restricted: false },
 ]
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
+  const account = useCurrentAccount()
+
+  // Check if current wallet is allowed to access restricted pages
+  const isVaultAllowed = useMemo(() => {
+    if (!account?.address) return false
+    const normalizedAddress = account.address.toLowerCase()
+    return VAULT_ALLOWED_WALLETS.some(
+      (addr) => addr.toLowerCase() === normalizedAddress
+    )
+  }, [account?.address])
+
+  // Filter nav items based on wallet permissions
+  const visibleNavItems = navItems.filter(
+    (item) => !item.restricted || isVaultAllowed
+  )
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -37,7 +58,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Sidebar */}
         <aside className="w-64 min-h-[calc(100vh-4rem)] bg-slate-800 border-r border-slate-700">
           <nav className="p-4 space-y-2">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
