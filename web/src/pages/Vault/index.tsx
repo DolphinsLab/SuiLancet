@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit'
 import type { CoinStruct } from '@mysten/sui/client'
+import { useToast } from '../../components/Toast'
 
-type VaultTab = 'balances' | 'deposit' | 'withdraw'
+type VaultTab = 'balances' | 'deposit' | 'withdraw' | 'settings'
 
 interface CoinBalance {
   coinType: string
@@ -11,14 +12,61 @@ interface CoinBalance {
   coinCount: number
 }
 
+interface VaultConfig {
+  contractAddress: string
+  vaultObject: string
+  customRpcEndpoint: string
+}
+
+const DEFAULT_CONFIG: VaultConfig = {
+  contractAddress: '',
+  vaultObject: '',
+  customRpcEndpoint: '',
+}
+
+const STORAGE_KEY = 'suilancet_vault_config'
+
 export default function Vault() {
   const account = useCurrentAccount()
   const client = useSuiClient()
+  const toast = useToast()
   const [activeTab, setActiveTab] = useState<VaultTab>('balances')
   const [coinType, setCoinType] = useState('')
   const [amount, setAmount] = useState('')
   const [balances, setBalances] = useState<CoinBalance[]>([])
   const [isLoading, setIsLoading] = useState(false)
+
+  // Vault configuration
+  const [config, setConfig] = useState<VaultConfig>(DEFAULT_CONFIG)
+  const [isEditing, setIsEditing] = useState(false)
+  const [tempConfig, setTempConfig] = useState<VaultConfig>(DEFAULT_CONFIG)
+
+  // Load config from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setConfig(parsed)
+        setTempConfig(parsed)
+      } catch (e) {
+        console.error('Failed to parse vault config:', e)
+      }
+    }
+  }, [])
+
+  // Save config to localStorage
+  const saveConfig = () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tempConfig))
+    setConfig(tempConfig)
+    setIsEditing(false)
+    toast.success('Settings Saved', 'Vault configuration has been updated')
+  }
+
+  const cancelEdit = () => {
+    setTempConfig(config)
+    setIsEditing(false)
+  }
 
   // Fetch all coin balances
   const fetchBalances = async () => {
@@ -146,6 +194,16 @@ export default function Vault() {
           }`}
         >
           Withdraw
+        </button>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`px-6 py-3 rounded-lg font-medium ${
+            activeTab === 'settings'
+              ? 'bg-sui-600 text-white'
+              : 'bg-slate-700 text-gray-300'
+          }`}
+        >
+          Settings
         </button>
       </div>
 
@@ -345,20 +403,147 @@ export default function Vault() {
         </div>
       )}
 
-      {/* Vault Info */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-4">Vault Info</h2>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-400">Contract Address</span>
-            <span className="font-mono text-gray-300">0x9ef0...bdae</span>
+      {/* Settings Tab */}
+      {activeTab === 'settings' && (
+        <div className="space-y-4">
+          <div className="card">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-semibold text-white">Vault Configuration</h2>
+              {!isEditing ? (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="px-4 py-2 bg-slate-700 text-gray-300 rounded-lg hover:bg-slate-600"
+                >
+                  Edit
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={cancelEdit}
+                    className="px-4 py-2 bg-slate-700 text-gray-300 rounded-lg hover:bg-slate-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveConfig}
+                    className="px-4 py-2 bg-sui-600 text-white rounded-lg hover:bg-sui-700"
+                  >
+                    Save
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-gray-400 text-sm">Contract Address</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={tempConfig.contractAddress}
+                    onChange={(e) => setTempConfig({ ...tempConfig, contractAddress: e.target.value })}
+                    placeholder="0x..."
+                    className="input w-full font-mono text-sm"
+                  />
+                ) : (
+                  <p className="font-mono text-gray-300 text-sm bg-slate-700 px-4 py-2 rounded-lg">
+                    {config.contractAddress || <span className="text-gray-500">Not configured</span>}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-gray-400 text-sm">Vault Object ID</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={tempConfig.vaultObject}
+                    onChange={(e) => setTempConfig({ ...tempConfig, vaultObject: e.target.value })}
+                    placeholder="0x..."
+                    className="input w-full font-mono text-sm"
+                  />
+                ) : (
+                  <p className="font-mono text-gray-300 text-sm bg-slate-700 px-4 py-2 rounded-lg">
+                    {config.vaultObject || <span className="text-gray-500">Not configured</span>}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">Vault Object</span>
-            <span className="font-mono text-gray-300">0x22e8...0f7d</span>
+
+          <div className="card">
+            <h2 className="text-lg font-semibold text-white mb-6">Network Settings</h2>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-gray-400 text-sm">Custom RPC Endpoint</label>
+                <p className="text-gray-500 text-xs">Leave empty to use default Sui RPC</p>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={tempConfig.customRpcEndpoint}
+                    onChange={(e) => setTempConfig({ ...tempConfig, customRpcEndpoint: e.target.value })}
+                    placeholder="https://fullnode.mainnet.sui.io:443"
+                    className="input w-full font-mono text-sm"
+                  />
+                ) : (
+                  <p className="font-mono text-gray-300 text-sm bg-slate-700 px-4 py-2 rounded-lg">
+                    {config.customRpcEndpoint || <span className="text-gray-500">Using default RPC</span>}
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-slate-700/50 rounded-lg p-4 text-sm">
+                <p className="text-gray-400 mb-2">Common RPC Endpoints:</p>
+                <ul className="space-y-1 text-gray-500 font-mono text-xs">
+                  <li>• https://fullnode.mainnet.sui.io:443 (Mainnet)</li>
+                  <li>• https://fullnode.testnet.sui.io:443 (Testnet)</li>
+                  <li>• https://fullnode.devnet.sui.io:443 (Devnet)</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Vault Info Summary (shown on all tabs except settings) */}
+      {activeTab !== 'settings' && (config.contractAddress || config.vaultObject) && (
+        <div className="card">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-white">Vault Info</h2>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className="text-sui-400 text-sm hover:text-sui-300"
+            >
+              Edit
+            </button>
+          </div>
+          <div className="space-y-2 text-sm">
+            {config.contractAddress && (
+              <div className="flex justify-between">
+                <span className="text-gray-400">Contract Address</span>
+                <span className="font-mono text-gray-300 truncate max-w-[200px]" title={config.contractAddress}>
+                  {config.contractAddress.slice(0, 8)}...{config.contractAddress.slice(-6)}
+                </span>
+              </div>
+            )}
+            {config.vaultObject && (
+              <div className="flex justify-between">
+                <span className="text-gray-400">Vault Object</span>
+                <span className="font-mono text-gray-300 truncate max-w-[200px]" title={config.vaultObject}>
+                  {config.vaultObject.slice(0, 8)}...{config.vaultObject.slice(-6)}
+                </span>
+              </div>
+            )}
+            {config.customRpcEndpoint && (
+              <div className="flex justify-between">
+                <span className="text-gray-400">Custom RPC</span>
+                <span className="font-mono text-green-400 text-xs">Connected</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
