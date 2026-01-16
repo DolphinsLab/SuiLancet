@@ -6,12 +6,16 @@ type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransactio
 
 type CoinAction = 'merge' | 'split' | 'transfer' | 'destroy'
 
+// Maximum coins that can be merged in a single transaction (1 primary + 2047 others)
+const MAX_MERGE_PER_TX = 2047
+
 export default function Coin() {
   const account = useCurrentAccount()
   const [action, setAction] = useState<CoinAction>('merge')
   const [selectedCoinType, setSelectedCoinType] = useState<string>('')
   const [transferAddress, setTransferAddress] = useState('')
   const [splitAmount, setSplitAmount] = useState('')
+  const [mergeProgress, setMergeProgress] = useState<{ current: number; total: number } | null>(null)
 
   const { mutate: signAndExecute, isPending } = useSignAndExecuteTransaction()
 
@@ -30,23 +34,59 @@ export default function Coin() {
       return
     }
 
-    const txb = new Transaction()
-    const [primaryCoin, ...otherCoins] = coinsOfType.map(c => c.coinObjectId)
+    const coinIds = coinsOfType.map(c => c.coinObjectId)
+    const [primaryCoin, ...otherCoins] = coinIds
 
-    if (otherCoins.length > 0) {
+    // If within single transaction limit, merge all at once
+    if (otherCoins.length <= MAX_MERGE_PER_TX) {
+      const txb = new Transaction()
       txb.mergeCoins(primaryCoin, otherCoins)
-    }
 
-    signAndExecute(
-      { transaction: txb } as unknown as TransactionInput,
-      {
-        onSuccess: () => {
-          alert('Coins merged successfully!')
-          refetch()
-        },
-        onError: (err) => alert(`Error: ${err.message}`),
+      signAndExecute(
+        { transaction: txb } as unknown as TransactionInput,
+        {
+          onSuccess: () => {
+            alert(`Successfully merged ${coinsOfType.length} coins into one!`)
+            refetch()
+          },
+          onError: (err) => alert(`Error: ${err.message}`),
+        }
+      )
+    } else {
+      // Batch merge for large coin sets
+      const totalBatches = Math.ceil(otherCoins.length / MAX_MERGE_PER_TX)
+      setMergeProgress({ current: 0, total: totalBatches })
+
+      // Create batches of coins to merge
+      const batches: string[][] = []
+      for (let i = 0; i < otherCoins.length; i += MAX_MERGE_PER_TX) {
+        batches.push(otherCoins.slice(i, i + MAX_MERGE_PER_TX))
       }
-    )
+
+      // Execute first batch
+      const txb = new Transaction()
+      txb.mergeCoins(primaryCoin, batches[0])
+
+      signAndExecute(
+        { transaction: txb } as unknown as TransactionInput,
+        {
+          onSuccess: () => {
+            setMergeProgress({ current: 1, total: totalBatches })
+            if (totalBatches > 1) {
+              alert(`Batch 1/${totalBatches} completed. Please continue merging remaining coins.`)
+            } else {
+              alert(`Successfully merged ${coinsOfType.length} coins into one!`)
+              setMergeProgress(null)
+            }
+            refetch()
+          },
+          onError: (err) => {
+            setMergeProgress(null)
+            alert(`Error: ${err.message}`)
+          },
+        }
+      )
+    }
   }
 
   const handleTransfer = async () => {
@@ -138,13 +178,40 @@ export default function Coin() {
           <div className="space-y-4">
             <p className="text-gray-400">
               Merge all coins of the selected type into one.
+              {selectedCoinType && coinsByType[selectedCoinType] && (
+                <span className="block mt-2 text-sm">
+                  {coinsByType[selectedCoinType].length > MAX_MERGE_PER_TX + 1 ? (
+                    <span className="text-yellow-400">
+                      {coinsByType[selectedCoinType].length} coins detected. Will require {Math.ceil((coinsByType[selectedCoinType].length - 1) / MAX_MERGE_PER_TX)} transactions (max {MAX_MERGE_PER_TX + 1} per tx).
+                    </span>
+                  ) : (
+                    <span className="text-green-400">
+                      {coinsByType[selectedCoinType].length} coins can be merged in a single transaction.
+                    </span>
+                  )}
+                </span>
+              )}
             </p>
+            {mergeProgress && (
+              <div className="bg-slate-700 rounded-lg p-3">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-300">Merge Progress</span>
+                  <span className="text-white">{mergeProgress.current}/{mergeProgress.total} batches</span>
+                </div>
+                <div className="w-full bg-slate-600 rounded-full h-2">
+                  <div
+                    className="bg-sui-500 h-2 rounded-full transition-all"
+                    style={{ width: `${(mergeProgress.current / mergeProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
             <button
               onClick={handleMergeCoins}
               disabled={isPending || !selectedCoinType}
               className="btn-primary w-full disabled:opacity-50"
             >
-              {isPending ? 'Processing...' : 'Merge Coins'}
+              {isPending ? 'Processing...' : mergeProgress ? 'Continue Merge' : 'Merge Coins'}
             </button>
           </div>
         )}
