@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
+import { useTransactionToast } from '../../components/TransactionToast'
 
 type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransaction>['mutate']>[0]
 
 export default function TransactionPage() {
   const account = useCurrentAccount()
   const client = useSuiClient()
+  const txToast = useTransactionToast()
   const [txBase64, setTxBase64] = useState('')
   const [simulationResult, setSimulationResult] = useState<any>(null)
   const [isSimulating, setIsSimulating] = useState(false)
@@ -45,11 +47,13 @@ export default function TransactionPage() {
         { transaction: tx } as unknown as TransactionInput,
         {
           onSuccess: (result) => {
-            alert(`Transaction executed! Digest: ${result.digest}`)
+            txToast.showTransactionResult(true, result.digest)
             setTxBase64('')
             setSimulationResult(null)
+            setError(null)
           },
           onError: (err) => {
+            txToast.showTransactionResult(false, '', err.message)
             setError(err.message)
           },
         }
