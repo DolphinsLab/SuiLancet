@@ -1,0 +1,194 @@
+name: Linear Sync
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed, converted_to_draft, ready_for_review]
+  issues:
+    types: [opened, closed, reopened]
+  issue_comment:
+    types: [created]
+
+env:
+  LINEAR_TEAM_KEY: SUI
+
+jobs:
+  # Sync PR status to Linear
+  sync-pr-to-linear:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract Linear Issue ID from PR
+        id: extract
+        run: |
+          # Extract SUI-XXX from PR title or body
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_BODY="${{ github.event.pull_request.body }}"
+
+          # Try to find Linear issue ID (format: SUI-123)
+          ISSUE_ID=$(echo "$PR_TITLE $PR_BODY" | grep -oE 'SUI-[0-9]+' | head -1 || echo "")
+          echo "issue_id=$ISSUE_ID" >> $GITHUB_OUTPUT
+
+          if [ -n "$ISSUE_ID" ]; then
+            echo "Found Linear Issue: $ISSUE_ID"
+          else
+            echo "No Linear Issue ID found in PR"
+          fi
+
+      - name: Update Linear Issue Status
+        if: steps.extract.outputs.issue_id != '' && env.LINEAR_API_KEY != ''
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ISSUE_ID: ${{ steps.extract.outputs.issue_id }}
+          PR_STATE: ${{ github.event.pull_request.state }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          # Determine target status based on PR state
+          if [ "$PR_MERGED" = "true" ]; then
+            STATUS="Done"
+            echo "PR merged - marking as Done"
+          elif [ "$PR_STATE" = "closed" ]; then
+            echo "PR closed without merge - no status change"
+            exit 0
+          elif [ "$PR_DRAFT" = "true" ]; then
+            STATUS="In Progress"
+            echo "PR is draft - marking as In Progress"
+          else
+            STATUS="In Review"
+            echo "PR ready for review - marking as In Review"
+          fi
+
+          echo "Updating $ISSUE_ID to status: $STATUS"
+
+          # Note: Actual Linear API call would go here
+          # Linear's GitHub integration handles this automatically if connected
+          # This is a placeholder for custom implementations
+          echo "::notice::Linear Issue $ISSUE_ID should be updated to '$STATUS'"
+
+  # Auto-label PRs based on changed files
+  auto-label-pr:
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed areas and add labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            const labels = new Set();
+
+            for (const file of files) {
+              const path = file.filename;
+
+              // Detect module based on file path
+              if (path.startsWith('web/')) labels.add('web');
+              if (path.startsWith('src/cli')) labels.add('cli');
+              if (path.startsWith('src/') && !path.startsWith('src/cli')) labels.add('sdk');
+              if (path.includes('cetus') || path.includes('deepbook')) labels.add('dex');
+              if (path.startsWith('docs/') || path.endsWith('.md')) labels.add('docs');
+              if (path.startsWith('tests/') || path.includes('.test.')) labels.add('test');
+            }
+
+            if (labels.size > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: [...labels]
+              });
+              console.log('Added labels:', [...labels]);
+            }
+
+  # Validate PR has Linear issue reference
+  validate-linear-reference:
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for Linear Issue Reference
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const title = pr.title || '';
+            const body = pr.body || '';
+            const branch = pr.head.ref || '';
+
+            // Check for Linear issue reference (SUI-XXX)
+            const linearPattern = /SUI-\d+/i;
+            const hasLinearRef = linearPattern.test(title) ||
+                                 linearPattern.test(body) ||
+                                 linearPattern.test(branch);
+
+            // Check for GitHub issue reference (#XXX)
+            const githubPattern = /(closes|fixes|resolves)\s*#\d+/i;
+            const hasGithubRef = githubPattern.test(body);
+
+            if (!hasLinearRef && !hasGithubRef) {
+              core.warning('PR should reference a Linear issue (SUI-XXX) or GitHub issue (Closes #XXX)');
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `### Issue Reference Missing
+
+            This PR doesn't appear to reference a Linear issue or GitHub issue.
+
+            Please update the PR title or description to include:
+            - Linear: \`SUI-123\` in title or body
+            - GitHub: \`Closes #123\` in body
+
+            This helps track work and automatically update issue status.`
+              });
+            } else {
+              console.log('Issue reference found');
+            }
+
+  # Comment on issue when PR is created
+  link-pr-to-issue:
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Extract and Link GitHub Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+
+            // Find GitHub issue references
+            const matches = body.match(/(closes|fixes|resolves)\s*#(\d+)/gi);
+            if (!matches) return;
+
+            for (const match of matches) {
+              const issueNum = match.match(/#(\d+)/)[1];
+
+              try {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(issueNum),
+                  body: `### PR Created
+
+            PR #${context.issue.number} has been opened for this issue.
+
+            **Title:** ${context.payload.pull_request.title}
+            **Author:** @${context.payload.pull_request.user.login}
+            **Link:** ${context.payload.pull_request.html_url}`
+                });
+                console.log(`Commented on issue #${issueNum}`);
+              } catch (e) {
+                console.log(`Could not comment on issue #${issueNum}: ${e.message}`);
+              }
+            }

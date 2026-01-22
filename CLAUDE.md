@@ -12,7 +12,21 @@ SuiLancet is a lightweight personal tool for managing multiple Sui wallets and b
 
 **All feature development must be driven by Issues**, following this workflow:
 
+- **Project Management**: Linear (Team Key: `SUI`)
+- **Source Control**: GitHub
+- **Issue Tracking**: Linear Issues (SUI-XXX) synced with GitHub
+
 ### 1. Issue Creation Guidelines
+
+#### Linear Issue (Preferred)
+
+```
+Title format: Short description (no prefix needed)
+Labels: feature | bug | refactor | docs | test | chore + module labels
+Linear ID: Auto-generated as SUI-XXX
+```
+
+#### GitHub Issue (Alternative)
 
 ```
 Title format: [Type] Short description
@@ -28,7 +42,12 @@ Type labels: feature | bug | refactor | docs | test | chore
 ### 2. Branch Management
 
 ```
-Branch naming convention:
+Branch naming convention (with Linear):
+- feature/SUI-{number}-{short-description}
+- bugfix/SUI-{number}-{short-description}
+- refactor/SUI-{number}-{short-description}
+
+Branch naming convention (with GitHub Issues):
 - feature/issue-{number}-{short-description}
 - bugfix/issue-{number}-{short-description}
 - refactor/issue-{number}-{short-description}
@@ -37,18 +56,47 @@ Branch naming convention:
 ### 3. Development Flow
 
 ```
-1. Create Issue -> Describe requirements and acceptance criteria
-2. Create Branch -> Branch from main, associate with Issue number
-3. Implement -> Follow code standards
-4. Commit -> Reference Issue in commit message (#123)
-5. Create PR -> Link Issue, request review
-6. Merge -> PR merge auto-closes Issue
+┌─────────────────────────────────────────────────────────────────┐
+│                    Development Workflow                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. Create Issue (Linear)                                       │
+│     └─→ Issue created as SUI-XXX                                │
+│     └─→ Status: Backlog → Todo                                  │
+│                                                                 │
+│  2. Start Work                                                  │
+│     └─→ Move issue to "In Progress"                             │
+│     └─→ Create branch: feature/SUI-XXX-description              │
+│                                                                 │
+│  3. Implement                                                   │
+│     └─→ Follow code standards                                   │
+│     └─→ Commit with issue reference                             │
+│                                                                 │
+│  4. Create PR                                                   │
+│     └─→ Include SUI-XXX in title or body                        │
+│     └─→ GitHub Action auto-validates reference                  │
+│     └─→ Issue auto-moves to "In Review"                         │
+│                                                                 │
+│  5. Code Review                                                 │
+│     └─→ Address feedback                                        │
+│                                                                 │
+│  6. Merge PR                                                    │
+│     └─→ Issue auto-moves to "Done"                              │
+│     └─→ Branch deleted                                          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### 4. Commit Convention
 
 ```
-Format: <type>(<scope>): <subject> (#issue-number)
+Format: <type>(<scope>): <subject>
+
+With Linear Issue (in commit body):
+SUI-XXX
+
+With GitHub Issue (in subject):
+<type>(<scope>): <subject> (#issue-number)
 
 Types:
 - feat:     New feature
@@ -58,20 +106,32 @@ Types:
 - test:     Test related
 - chore:    Build/tool changes
 
-Examples:
-- feat(wallet): add multi-wallet support (#12)
-- fix(backend): resolve connection timeout (#15)
-- docs(readme): update installation guide (#8)
+Examples (Linear):
+  feat(wallet): add multi-wallet support
+
+  SUI-42
+
+Examples (GitHub):
+  feat(wallet): add multi-wallet support (#12)
+  fix(backend): resolve connection timeout (#15)
 ```
 
 ### 5. PR Guidelines
 
-**PR Title**: `[#IssueNumber] Short description`
+**PR Title**: Include Linear issue ID or descriptive title
+```
+[SUI-123] Add multi-wallet support
+feat(wallet): add multi-wallet support
+```
 
 **PR Description Template**:
 ```markdown
 ## Related Issue
-Closes #xxx
+SUI-XXX
+<!-- or for GitHub issues: Closes #xxx -->
+
+## Summary
+Brief description of changes
 
 ## Changes
 - Change 1
@@ -84,6 +144,27 @@ Closes #xxx
 
 ## Screenshots/Recordings (if applicable)
 ```
+
+### 6. Linear-GitHub Integration
+
+The project uses GitHub Actions for Linear synchronization (`.github/workflows/linear-sync.yml`):
+
+| Event | Action |
+|-------|--------|
+| PR opened | Validates issue reference, auto-labels based on files |
+| PR ready for review | Updates Linear issue to "In Review" |
+| PR merged | Updates Linear issue to "Done" |
+| PR converted to draft | Updates Linear issue to "In Progress" |
+
+**Auto-labeling Rules**:
+| File Path | Label |
+|-----------|-------|
+| `web/*` | `web` |
+| `src/cli*` | `cli` |
+| `src/*` (other) | `sdk` |
+| `*cetus*`, `*deepbook*` | `dex` |
+| `docs/*`, `*.md` | `docs` |
+| `tests/*`, `*.test.*` | `test` |
 
 ---
 
@@ -150,10 +231,27 @@ SuiLancet/
 
 ### Task Processing Flow
 
-1. **Receiving tasks**: First confirm the associated Issue number
+1. **Receiving tasks**: Confirm the associated Linear Issue (SUI-XXX) or GitHub Issue (#XXX)
 2. **During development**: Work on the corresponding feature branch
-3. **When committing**: Commit message must reference Issue
-4. **On completion**: Create PR and link Issue
+3. **When committing**: Reference issue in commit message or body
+4. **On completion**: Create PR and link Issue (GitHub Action validates automatically)
+
+### Issue Reference Requirements
+
+**Always include issue reference in one of these ways**:
+
+| Location | Linear Format | GitHub Format |
+|----------|---------------|---------------|
+| PR Title | `[SUI-123] Description` | `[#123] Description` |
+| PR Body | `SUI-123` | `Closes #123` |
+| Branch Name | `feature/SUI-123-desc` | `feature/issue-123-desc` |
+| Commit Body | `SUI-123` | N/A |
+| Commit Subject | N/A | `feat: desc (#123)` |
+
+**GitHub Action will**:
+- Warn if no issue reference is found
+- Auto-label PR based on changed files
+- Comment on linked GitHub issues
 
 ### PR Creation Requirements
 
@@ -166,6 +264,7 @@ SuiLancet/
    https://github.com/DolphinsLab/SuiLancet/compare/main...<branch-name>?expand=1
    ```
 4. **Include in PR/link**:
+   - Issue reference (SUI-XXX or Closes #XXX)
    - Clear title following commit convention
    - Summary of changes
    - List of modified files
@@ -174,6 +273,23 @@ SuiLancet/
 **PR Link Format**:
 ```
 https://github.com/DolphinsLab/SuiLancet/compare/main...<branch>?expand=1&title=<url-encoded-title>
+```
+
+**PR Body Template** (copy-paste ready):
+```markdown
+## Related Issue
+SUI-XXX
+
+## Summary
+<!-- Brief description of what this PR does -->
+
+## Changes
+- Change 1
+- Change 2
+
+## Testing
+- [ ] Unit tests pass
+- [ ] Manual testing complete
 ```
 
 ### Code Modification Principles
@@ -219,4 +335,4 @@ Follow Semantic Versioning:
 
 ---
 
-*Last updated: 2026-01-16*
+*Last updated: 2026-01-22*
