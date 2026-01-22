@@ -1,125 +1,125 @@
-# Linear 项目设置操作指南
+# Linear Project Setup Guide
 
-本指南详细说明如何在 Linear 中设置 SuiLancet 项目管理。
-
----
-
-## 目录
-
-1. [创建项目](#1-创建项目)
-2. [配置标签系统](#2-配置标签系统)
-3. [设置工作流状态](#3-设置工作流状态)
-4. [创建 Cycle/Milestone](#4-创建-cyclemilestone)
-5. [配置 Issue 模板](#5-配置-issue-模板)
-6. [GitHub 集成](#6-github-集成)
-7. [创建初始 Issues](#7-创建初始-issues)
-8. [日常使用流程](#8-日常使用流程)
+This guide provides step-by-step instructions for setting up SuiLancet project management in Linear.
 
 ---
 
-## 1. 创建项目
+## Table of Contents
 
-### 步骤
+1. [Create Project](#1-create-project)
+2. [Configure Label System](#2-configure-label-system)
+3. [Set Up Workflow States](#3-set-up-workflow-states)
+4. [Create Cycles/Milestones](#4-create-cyclesmilestones)
+5. [Configure Issue Templates](#5-configure-issue-templates)
+6. [GitHub Integration](#6-github-integration)
+7. [Create Initial Issues](#7-create-initial-issues)
+8. [Daily Workflow](#8-daily-workflow)
 
-1. 登录 [Linear](https://linear.app)
-2. 点击左侧边栏的 **"+"** 按钮
-3. 选择 **"Create project"**
-4. 填写项目信息：
+---
 
-| 字段 | 值 |
-|------|-----|
+## 1. Create Project
+
+### Steps
+
+1. Log in to [Linear](https://linear.app)
+2. Click the **"+"** button in the left sidebar
+3. Select **"Create project"**
+4. Fill in project information:
+
+| Field | Value |
+|-------|-------|
 | **Project name** | SuiLancet |
 | **Project key** | SUI |
-| **Icon** | 🔧 或 💼 |
-| **Color** | 选择蓝色系 (#3B82F6) |
+| **Icon** | 🔧 or 💼 |
+| **Color** | Blue (#3B82F6) |
 
-5. 点击 **"Create project"**
+5. Click **"Create project"**
 
-### 项目描述 (复制粘贴)
+### Project Description (Copy & Paste)
 
 ```
-轻量级 Sui 区块链多钱包管理工具
+Lightweight Sui blockchain multi-wallet management tool
 
-功能特性：
-• CLI 和 Web UI 双模式交互
-• Cetus、DeepBook V3 DEX 集成
-• 批量币种操作和 Vault 管理
-• 多钱包统一管理
+Features:
+• CLI and Web UI dual-mode interaction
+• Cetus, DeepBook V3 DEX integration
+• Batch coin operations and Vault management
+• Unified multi-wallet management
 
-技术栈：TypeScript, React, Vite, Sui SDK
+Tech Stack: TypeScript, React, Vite, Sui SDK
 ```
 
 ---
 
-## 2. 配置标签系统
+## 2. Configure Label System
 
-### 步骤
+### Steps
 
-1. 进入 **Settings** → **Labels**
-2. 删除默认标签（可选）
-3. 按以下表格创建新标签：
+1. Go to **Settings** → **Labels**
+2. Delete default labels (optional)
+3. Create new labels according to the tables below:
 
-### 推荐标签
+### Recommended Labels
 
-| 标签名 | 颜色代码 | 用途 |
-|--------|----------|------|
-| `feature` | `#22C55E` (绿色) | 新功能开发 |
-| `bug` | `#EF4444` (红色) | Bug 修复 |
-| `refactor` | `#EAB308` (黄色) | 代码重构 |
-| `docs` | `#3B82F6` (蓝色) | 文档更新 |
-| `test` | `#06B6D4` (青色) | 测试相关 |
-| `chore` | `#6B7280` (灰色) | 构建/工具 |
+| Label | Color Code | Purpose |
+|-------|------------|---------|
+| `feature` | `#22C55E` (Green) | New feature development |
+| `bug` | `#EF4444` (Red) | Bug fixes |
+| `refactor` | `#EAB308` (Yellow) | Code refactoring |
+| `docs` | `#3B82F6` (Blue) | Documentation updates |
+| `test` | `#06B6D4` (Cyan) | Test related |
+| `chore` | `#6B7280` (Gray) | Build/tooling |
 
-### 模块标签
+### Module Labels
 
-| 标签名 | 颜色代码 | 用途 |
-|--------|----------|------|
-| `web` | `#A855F7` (紫色) | Web UI 相关 |
-| `cli` | `#F97316` (橙色) | CLI 工具相关 |
-| `sdk` | `#64748B` (石板灰) | 核心 SDK |
-| `dex` | `#14B8A6` (蓝绿) | DEX 集成 |
+| Label | Color Code | Purpose |
+|-------|------------|---------|
+| `web` | `#A855F7` (Purple) | Web UI related |
+| `cli` | `#F97316` (Orange) | CLI tool related |
+| `sdk` | `#64748B` (Slate) | Core SDK |
+| `dex` | `#14B8A6` (Teal) | DEX integration |
 
-### 优先级标签 (可选)
+### Priority Labels (Optional)
 
-| 标签名 | 颜色代码 | 用途 |
-|--------|----------|------|
-| `P0-critical` | `#DC2626` (深红) | 紧急/阻塞 |
-| `P1-high` | `#F97316` (橙色) | 高优先级 |
-| `P2-medium` | `#FBBF24` (琥珀) | 中优先级 |
-| `P3-low` | `#9CA3AF` (灰色) | 低优先级 |
+| Label | Color Code | Purpose |
+|-------|------------|---------|
+| `P0-critical` | `#DC2626` (Dark Red) | Urgent/Blocking |
+| `P1-high` | `#F97316` (Orange) | High priority |
+| `P2-medium` | `#FBBF24` (Amber) | Medium priority |
+| `P3-low` | `#9CA3AF` (Gray) | Low priority |
 
 ---
 
-## 3. 设置工作流状态
+## 3. Set Up Workflow States
 
-> **注意**: 工作流状态是在 **Team Settings** 中配置的，而不是 Project Settings。
+> **Note**: Workflow states are configured in **Team Settings**, not Project Settings.
 
-### 步骤
+### Steps
 
-1. 点击左侧边栏你的 **Team 名称** (例如 "SuiLancet" 或你的团队名)
-2. 点击 Team 名称旁边的 **齿轮图标 ⚙️** 或 **"..."** 菜单
-3. 选择 **"Team Settings"** 或 **"Settings"**
-4. 在左侧菜单中选择 **"Workflow"**
-5. 你会看到状态列表，可以：
-   - **添加状态**: 点击 "Add status" 按钮
-   - **编辑状态**: 点击状态名称进行编辑
-   - **删除状态**: 点击状态右侧的 "..." 菜单
-   - **拖拽排序**: 拖动状态改变顺序
+1. Click your **Team name** in the left sidebar (e.g., "SuiLancet" or your team name)
+2. Click the **gear icon ⚙️** or **"..."** menu next to the Team name
+3. Select **"Team Settings"** or **"Settings"**
+4. Choose **"Workflow"** from the left menu
+5. You'll see a list of states where you can:
+   - **Add status**: Click "Add status" button
+   - **Edit status**: Click on the status name to edit
+   - **Delete status**: Click the "..." menu on the right side of the status
+   - **Reorder**: Drag and drop to change order
 
-### 替代路径 (快捷方式)
+### Alternative Paths (Shortcuts)
 
 ```
-方法 1: 键盘快捷键
-按 G 然后按 S → 打开设置 → 选择你的 Team → Workflow
+Method 1: Keyboard Shortcut
+Press G then S → Open settings → Select your Team → Workflow
 
-方法 2: 命令面板
-按 Cmd/Ctrl + K → 输入 "workflow" → 选择 "Go to team workflow settings"
+Method 2: Command Palette
+Press Cmd/Ctrl + K → Type "workflow" → Select "Go to team workflow settings"
 
-方法 3: URL 直接访问
-https://linear.app/[你的workspace]/settings/teams/[team-id]/workflow
+Method 3: Direct URL
+https://linear.app/[your-workspace]/settings/teams/[team-id]/workflow
 ```
 
-### 推荐状态流
+### Recommended Status Flow
 
 ```
 ┌──────────┐    ┌──────┐    ┌─────────────┐    ┌───────────┐    ┌──────┐
@@ -131,225 +131,225 @@ https://linear.app/[你的workspace]/settings/teams/[team-id]/workflow
                                                               └───────────┘
 ```
 
-### 状态配置详情
+### Status Configuration Details
 
-| 状态 | 类型 | 颜色 | 说明 |
-|------|------|------|------|
-| **Backlog** | Backlog | 灰色 | 待评估的任务池 |
-| **Todo** | Unstarted | 蓝色 | 已评估，等待开始 |
-| **In Progress** | Started | 黄色 | 正在开发中 |
-| **In Review** | Started | 紫色 | PR 已提交，等待审核 |
-| **Done** | Completed | 绿色 | 已完成并合并 |
-| **Canceled** | Canceled | 红色 | 已取消/不再需要 |
+| Status | Type | Color | Description |
+|--------|------|-------|-------------|
+| **Backlog** | Backlog | Gray | Task pool awaiting evaluation |
+| **Todo** | Unstarted | Blue | Evaluated, waiting to start |
+| **In Progress** | Started | Yellow | Currently being developed |
+| **In Review** | Started | Purple | PR submitted, awaiting review |
+| **Done** | Completed | Green | Completed and merged |
+| **Canceled** | Canceled | Red | Canceled/no longer needed |
 
-### 添加自定义状态 (In Review)
+### Adding Custom Status (In Review)
 
-Linear 默认可能没有 "In Review" 状态，需要手动添加：
+Linear may not have an "In Review" status by default. Add it manually:
 
-1. 在 Workflow 设置页面，点击 **"Add status"**
-2. 填写：
+1. On the Workflow settings page, click **"Add status"**
+2. Fill in:
    - **Name**: `In Review`
-   - **Type**: 选择 `Started` (进行中类型)
-   - **Color**: 选择紫色
-   - **Description**: `PR 已提交，等待代码审核`
-3. 将其拖动到 "In Progress" 和 "Done" 之间
-4. 点击 **Save** 保存
+   - **Type**: Select `Started`
+   - **Color**: Choose purple
+   - **Description**: `PR submitted, awaiting code review`
+3. Drag it between "In Progress" and "Done"
+4. Click **Save**
 
-### 状态类型说明
+### Status Type Definitions
 
-| 类型 | 含义 | 用途 |
-|------|------|------|
-| **Backlog** | 待办池 | 未计划的任务 |
-| **Unstarted** | 未开始 | 已计划但未开始 |
-| **Started** | 进行中 | 正在处理的任务 |
-| **Completed** | 已完成 | 成功完成的任务 |
-| **Canceled** | 已取消 | 不再需要的任务 |
+| Type | Meaning | Usage |
+|------|---------|-------|
+| **Backlog** | Backlog pool | Unplanned tasks |
+| **Unstarted** | Not started | Planned but not started |
+| **Started** | In progress | Tasks being worked on |
+| **Completed** | Completed | Successfully finished tasks |
+| **Canceled** | Canceled | Tasks no longer needed |
 
 ---
 
-## 4. 创建 Cycle/Milestone
+## 4. Create Cycles/Milestones
 
-### 步骤
+### Steps
 
-1. 点击左侧边栏的 **"Cycles"**
-2. 点击 **"+ New cycle"**
-3. 按以下规划创建：
+1. Click **"Cycles"** in the left sidebar
+2. Click **"+ New cycle"**
+3. Create according to the following plan:
 
-### Cycle 1: Core Stability (当前)
+### Cycle 1: Core Stability (Current)
 
-**名称**: `Cycle 1: Core Stability`
-**时间**: 2 周
-**目标**:
+**Name**: `Cycle 1: Core Stability`
+**Duration**: 2 weeks
+**Goals**:
 ```
-完善现有功能，修复已知问题
-- 完成 Swap 页面执行逻辑
-- 完成 Vault Deposit/Withdraw 执行逻辑
-- 实现自定义 RPC 端点功能
-- 添加单元测试 (目标 80% 覆盖率)
+Improve existing features and fix known issues
+- Complete Swap page execution logic
+- Complete Vault Deposit/Withdraw execution logic
+- Implement custom RPC endpoint support
+- Add unit tests (target 80% coverage)
 ```
 
 ### Cycle 2: Advanced Trading
 
-**名称**: `Cycle 2: Advanced Trading`
-**时间**: 3 周
-**目标**:
+**Name**: `Cycle 2: Advanced Trading`
+**Duration**: 3 weeks
+**Goals**:
 ```
-扩展交易功能
+Expand trading features
 - Margin Trading Web UI
-- Suilend 借贷 Web UI
-- 价格报价和滑点设置
-- 交易历史记录
+- Suilend lending Web UI
+- Price quotes and slippage settings
+- Transaction history
 ```
 
 ### Cycle 3: User Experience
 
-**名称**: `Cycle 3: User Experience`
-**时间**: 2 周
-**目标**:
+**Name**: `Cycle 3: User Experience`
+**Duration**: 2 weeks
+**Goals**:
 ```
-提升用户体验
-- 深色/浅色主题切换
-- 移动端响应式优化
-- 用户引导教程
+Enhance user experience
+- Dark/light theme toggle
+- Mobile responsive optimization
+- User onboarding tutorial
 ```
 
 ---
 
-## 5. 配置 Issue 模板
+## 5. Configure Issue Templates
 
-### 步骤
+### Steps
 
-1. 进入 **Settings** → **Templates**
-2. 点击 **"+ Create template"**
-3. 创建以下模板：
+1. Go to **Settings** → **Templates**
+2. Click **"+ Create template"**
+3. Create the following templates:
 
-### 模板 1: Feature Request
+### Template 1: Feature Request
 
-**模板名称**: `Feature Request`
+**Template Name**: `Feature Request`
 
-**内容**:
+**Content**:
 ```markdown
-## 目标 (Goal)
-<!-- 清晰描述要实现的功能 -->
+## Goal
+<!-- Clear description of the feature to implement -->
 
-## 背景 (Background)
-<!-- 为什么需要这个功能 -->
+## Background
+<!-- Why this feature is needed -->
 
-## 验收标准 (Acceptance Criteria)
-- [ ] 标准 1
-- [ ] 标准 2
-- [ ] 标准 3
+## Acceptance Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+- [ ] Criterion 3
 
-## 技术方案 (Technical Approach)
-<!-- 可选 - 初步技术想法 -->
+## Technical Approach
+<!-- Optional - Initial technical ideas -->
 
-## 相关文件 (Related Files)
-<!-- 列出相关代码文件路径 -->
+## Related Files
+<!-- List related code file paths -->
 - `path/to/file.ts`
 
-## 参考资料 (References)
-<!-- 可选 - 相关文档或链接 -->
+## References
+<!-- Optional - Related documentation or links -->
 ```
 
-### 模板 2: Bug Report
+### Template 2: Bug Report
 
-**模板名称**: `Bug Report`
+**Template Name**: `Bug Report`
 
-**内容**:
+**Content**:
 ```markdown
-## 描述 (Description)
-<!-- Bug 的简要描述 -->
+## Description
+<!-- Brief description of the bug -->
 
-## 复现步骤 (Steps to Reproduce)
-1. 步骤 1
-2. 步骤 2
+## Steps to Reproduce
+1. Step 1
+2. Step 2
 3. ...
 
-## 期望行为 (Expected Behavior)
-<!-- 应该发生什么 -->
+## Expected Behavior
+<!-- What should happen -->
 
-## 实际行为 (Actual Behavior)
-<!-- 实际发生了什么 -->
+## Actual Behavior
+<!-- What actually happens -->
 
-## 环境信息 (Environment)
-- **网络**: mainnet / testnet / devnet
-- **浏览器**: Chrome / Firefox / Safari
-- **钱包**: Sui Wallet / Suiet / Ethos
+## Environment
+- **Network**: mainnet / testnet / devnet
+- **Browser**: Chrome / Firefox / Safari
+- **Wallet**: Sui Wallet / Suiet / Ethos
 
-## 截图/日志 (Screenshots/Logs)
-<!-- 可选 - 附加截图或错误日志 -->
+## Screenshots/Logs
+<!-- Optional - Attach screenshots or error logs -->
 
-## 可能的原因 (Possible Cause)
-<!-- 可选 - 如果有初步判断 -->
+## Possible Cause
+<!-- Optional - If you have an initial assessment -->
 ```
 
-### 模板 3: Technical Task
+### Template 3: Technical Task
 
-**模板名称**: `Technical Task`
+**Template Name**: `Technical Task`
 
-**内容**:
+**Content**:
 ```markdown
-## 任务描述 (Task Description)
-<!-- 技术任务的具体内容 -->
+## Task Description
+<!-- Specific content of the technical task -->
 
-## 实现步骤 (Implementation Steps)
-- [ ] 步骤 1
-- [ ] 步骤 2
-- [ ] 步骤 3
+## Implementation Steps
+- [ ] Step 1
+- [ ] Step 2
+- [ ] Step 3
 
-## 影响范围 (Impact Scope)
-<!-- 这个改动会影响哪些模块 -->
+## Impact Scope
+<!-- Which modules will this change affect -->
 
-## 测试计划 (Test Plan)
-- [ ] 单元测试
-- [ ] 集成测试
-- [ ] 手动测试
+## Test Plan
+- [ ] Unit tests
+- [ ] Integration tests
+- [ ] Manual testing
 
-## 相关文件 (Related Files)
+## Related Files
 - `path/to/file.ts`
 ```
 
 ---
 
-## 6. GitHub 集成
+## 6. GitHub Integration
 
-### 步骤
+### Steps
 
-1. 进入 **Settings** → **Integrations**
-2. 找到 **GitHub** 并点击 **"Connect"**
-3. 授权 Linear 访问 `DolphinsLab/SuiLancet` 仓库
+1. Go to **Settings** → **Integrations**
+2. Find **GitHub** and click **"Connect"**
+3. Authorize Linear to access the `DolphinsLab/SuiLancet` repository
 
-### 配置同步规则
+### Configure Sync Rules
 
-#### 分支命名规则
+#### Branch Naming Convention
 
-启用自动分支创建：
+Enable automatic branch creation:
 ```
-格式: feature/SUI-{issue-number}-{slug}
-示例: feature/SUI-42-swap-execution
+Format: feature/SUI-{issue-number}-{slug}
+Example: feature/SUI-42-swap-execution
 ```
 
-#### PR 自动关联
+#### PR Auto-Linking
 
-在 PR 描述中使用以下格式自动关联 Issue：
+Use these formats in PR descriptions to auto-link issues:
 ```
 Closes SUI-123
 Fixes SUI-123
 Resolves SUI-123
 ```
 
-#### Commit 关联
+#### Commit Linking
 
-在 commit message 中引用 Issue：
+Reference issues in commit messages:
 ```
 feat(web): implement swap execution logic
 
 SUI-123
 ```
 
-### GitHub Actions 集成 (可选)
+### GitHub Actions Integration (Optional)
 
-在 `.github/workflows/` 中添加 Linear 状态更新：
+Add Linear status updates in `.github/workflows/`:
 
 ```yaml
 # .github/workflows/linear-sync.yml
@@ -364,73 +364,73 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update Linear Issue
-        # Linear 会通过 GitHub 集成自动处理
+        # Linear handles this automatically through GitHub integration
         run: echo "PR status synced to Linear"
 ```
 
 ---
 
-## 7. 创建初始 Issues
+## 7. Create Initial Issues
 
-### 立即创建的 Issues 清单
+### Issues to Create Immediately
 
-按优先级顺序创建以下 Issues：
+Create the following issues in priority order:
 
-#### 高优先级 (Cycle 1)
+#### High Priority (Cycle 1)
 
-| # | 标题 | 标签 | 优先级 |
-|---|------|------|--------|
-| 1 | 完成 Swap 页面交易执行逻辑 | `feature`, `web`, `dex` | P1 |
-| 2 | 完成 Vault Deposit 功能 | `feature`, `web` | P1 |
-| 3 | 完成 Vault Withdraw 功能 | `feature`, `web` | P1 |
-| 4 | 实现自定义 RPC 端点支持 | `feature`, `web` | P2 |
-| 5 | 添加核心 SDK 单元测试 | `test`, `sdk` | P2 |
+| # | Title | Labels | Priority |
+|---|-------|--------|----------|
+| 1 | Complete Swap page transaction execution logic | `feature`, `web`, `dex` | P1 |
+| 2 | Complete Vault Deposit functionality | `feature`, `web` | P1 |
+| 3 | Complete Vault Withdraw functionality | `feature`, `web` | P1 |
+| 4 | Implement custom RPC endpoint support | `feature`, `web` | P2 |
+| 5 | Add core SDK unit tests | `test`, `sdk` | P2 |
 
-#### 中优先级 (Cycle 2)
+#### Medium Priority (Cycle 2)
 
-| # | 标题 | 标签 | 优先级 |
-|---|------|------|--------|
+| # | Title | Labels | Priority |
+|---|-------|--------|----------|
 | 6 | Margin Trading Web UI | `feature`, `web` | P2 |
-| 7 | Suilend 借贷 Web UI | `feature`, `web` | P2 |
-| 8 | 添加价格报价和滑点设置 | `feature`, `web`, `dex` | P2 |
-| 9 | 添加交易历史记录页面 | `feature`, `web` | P3 |
+| 7 | Suilend lending Web UI | `feature`, `web` | P2 |
+| 8 | Add price quotes and slippage settings | `feature`, `web`, `dex` | P2 |
+| 9 | Add transaction history page | `feature`, `web` | P3 |
 
-#### 低优先级 (Cycle 3)
+#### Low Priority (Cycle 3)
 
-| # | 标题 | 标签 | 优先级 |
-|---|------|------|--------|
-| 10 | 实现深色/浅色主题切换 | `feature`, `web` | P3 |
-| 11 | 移动端响应式优化 | `feature`, `web` | P3 |
-| 12 | 更新 README 安装和使用指南 | `docs` | P3 |
+| # | Title | Labels | Priority |
+|---|-------|--------|----------|
+| 10 | Implement dark/light theme toggle | `feature`, `web` | P3 |
+| 11 | Mobile responsive optimization | `feature`, `web` | P3 |
+| 12 | Update README installation and usage guide | `docs` | P3 |
 
-### Issue 详情示例
+### Issue Detail Example
 
-**Issue #1 详细内容**:
+**Issue #1 Full Content**:
 
 ```markdown
-## 标题
-[feature][web] 完成 Swap 页面交易执行逻辑
+## Title
+[feature][web] Complete Swap page transaction execution logic
 
-## 目标 (Goal)
-将 Swap 页面的 UI 与后端 DEX 交换逻辑连接，实现完整的代币交换功能。
+## Goal
+Connect Swap page UI with backend DEX swap logic to implement complete token swap functionality.
 
-## 背景 (Background)
-当前 Swap 页面 UI 已完成，但执行逻辑尚未连接。需要集成 Cetus 和 DeepBook V3 的交换方法。
+## Background
+The Swap page UI is complete, but execution logic is not yet connected. Need to integrate Cetus and DeepBook V3 swap methods.
 
-## 验收标准 (Acceptance Criteria)
-- [ ] 用户可以选择输入/输出代币
-- [ ] 显示实时报价和预估输出
-- [ ] 支持设置滑点容忍度
-- [ ] 成功执行 swap 交易
-- [ ] 显示交易结果 toast 通知
-- [ ] 处理错误情况并显示友好提示
+## Acceptance Criteria
+- [ ] User can select input/output tokens
+- [ ] Display real-time quotes and estimated output
+- [ ] Support slippage tolerance settings
+- [ ] Successfully execute swap transactions
+- [ ] Display transaction result toast notifications
+- [ ] Handle errors and show user-friendly messages
 
-## 技术方案 (Technical Approach)
-1. 在 `web/src/pages/Swap/` 中添加执行逻辑
-2. 调用 `src/methods/cetus-swap.ts` 或 `src/methods/deepbookv3-swap.ts`
-3. 使用现有的 Toast 组件显示交易状态
+## Technical Approach
+1. Add execution logic in `web/src/pages/Swap/`
+2. Call `src/methods/cetus-swap.ts` or `src/methods/deepbookv3-swap.ts`
+3. Use existing Toast component to display transaction status
 
-## 相关文件 (Related Files)
+## Related Files
 - `web/src/pages/Swap/index.tsx`
 - `src/methods/cetus-swap.ts`
 - `src/methods/deepbookv3-swap.ts`
@@ -439,92 +439,92 @@ jobs:
 
 ---
 
-## 8. 日常使用流程
+## 8. Daily Workflow
 
-### 开发者工作流
+### Developer Workflow
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    日常开发流程                          │
+│                    Daily Development Flow               │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│  1. 查看 Backlog/Todo                                   │
-│     └─→ 选择要处理的 Issue                              │
+│  1. Review Backlog/Todo                                 │
+│     └─→ Select an Issue to work on                      │
 │                                                         │
-│  2. 将 Issue 移至 "In Progress"                         │
-│     └─→ 自动创建分支 (如果启用)                          │
+│  2. Move Issue to "In Progress"                         │
+│     └─→ Auto-create branch (if enabled)                 │
 │                                                         │
-│  3. 本地开发                                            │
+│  3. Local Development                                   │
 │     └─→ git checkout -b feature/SUI-{number}-{slug}    │
-│     └─→ 编写代码                                        │
+│     └─→ Write code                                      │
 │     └─→ git commit -m "feat: xxx (SUI-123)"            │
 │                                                         │
-│  4. 创建 PR                                             │
-│     └─→ PR 描述包含 "Closes SUI-123"                    │
-│     └─→ Issue 自动移至 "In Review"                      │
+│  4. Create PR                                           │
+│     └─→ PR description includes "Closes SUI-123"        │
+│     └─→ Issue auto-moves to "In Review"                 │
 │                                                         │
 │  5. Code Review                                         │
-│     └─→ 修改/更新                                       │
+│     └─→ Make changes/updates                            │
 │                                                         │
-│  6. 合并 PR                                             │
-│     └─→ Issue 自动移至 "Done"                           │
+│  6. Merge PR                                            │
+│     └─→ Issue auto-moves to "Done"                      │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 快捷键
+### Keyboard Shortcuts
 
-| 快捷键 | 功能 |
-|--------|------|
-| `C` | 创建新 Issue |
-| `G` + `I` | 转到 Inbox |
-| `G` + `B` | 转到 Backlog |
-| `G` + `A` | 转到 Active (进行中) |
-| `1-4` | 设置优先级 |
-| `L` | 添加标签 |
-| `A` | 分配负责人 |
-| `P` | 设置项目 |
-| `Cmd/Ctrl + K` | 命令面板 |
+| Shortcut | Function |
+|----------|----------|
+| `C` | Create new Issue |
+| `G` + `I` | Go to Inbox |
+| `G` + `B` | Go to Backlog |
+| `G` + `A` | Go to Active |
+| `1-4` | Set priority |
+| `L` | Add label |
+| `A` | Assign owner |
+| `P` | Set project |
+| `Cmd/Ctrl + K` | Command palette |
 
-### 视图配置建议
+### View Configuration Recommendations
 
-#### 创建自定义视图
+#### Create Custom Views
 
-1. **My Tasks**: 过滤显示分配给自己的任务
-2. **Web UI Tasks**: 过滤 `web` 标签
-3. **Current Cycle**: 显示当前 Cycle 的所有任务
-4. **High Priority**: 过滤 P0 和 P1 任务
-
----
-
-## 附录: 快速检查清单
-
-### 项目设置完成检查
-
-- [ ] 项目已创建，Key 为 `SUI`
-- [ ] 10+ 标签已配置
-- [ ] 6 个工作流状态已设置
-- [ ] 3 个 Cycle 已创建
-- [ ] 3 个 Issue 模板已配置
-- [ ] GitHub 集成已启用
-- [ ] 5+ 初始 Issues 已创建
-
-### 每日检查
-
-- [ ] 查看 Inbox 处理新通知
-- [ ] 更新进行中任务的状态
-- [ ] 完成的任务是否已关闭
+1. **My Tasks**: Filter to show tasks assigned to you
+2. **Web UI Tasks**: Filter by `web` label
+3. **Current Cycle**: Show all tasks in the current Cycle
+4. **High Priority**: Filter P0 and P1 tasks
 
 ---
 
-## 相关链接
+## Appendix: Quick Checklist
 
-- [Linear 官方文档](https://linear.app/docs)
-- [Linear GitHub 集成指南](https://linear.app/docs/github)
-- [Linear 快捷键大全](https://linear.app/docs/keyboard-shortcuts)
-- [SuiLancet GitHub 仓库](https://github.com/DolphinsLab/SuiLancet)
+### Project Setup Completion Check
+
+- [ ] Project created with Key `SUI`
+- [ ] 10+ labels configured
+- [ ] 6 workflow states set up
+- [ ] 3 Cycles created
+- [ ] 3 Issue templates configured
+- [ ] GitHub integration enabled
+- [ ] 5+ initial Issues created
+
+### Daily Checklist
+
+- [ ] Check Inbox for new notifications
+- [ ] Update status of in-progress tasks
+- [ ] Close completed tasks
 
 ---
 
-*文档版本: 1.0*
-*最后更新: 2026-01-22*
+## Related Links
+
+- [Linear Documentation](https://linear.app/docs)
+- [Linear GitHub Integration Guide](https://linear.app/docs/github)
+- [Linear Keyboard Shortcuts](https://linear.app/docs/keyboard-shortcuts)
+- [SuiLancet GitHub Repository](https://github.com/DolphinsLab/SuiLancet)
+
+---
+
+*Document Version: 1.0*
+*Last Updated: 2026-01-22*

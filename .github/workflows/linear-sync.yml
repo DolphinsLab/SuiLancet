@@ -5,8 +5,6 @@ on:
     types: [opened, synchronize, closed, converted_to_draft, ready_for_review]
   issues:
     types: [opened, closed, reopened]
-  issue_comment:
-    types: [created]
 
 env:
   LINEAR_TEAM_KEY: SUI
@@ -70,6 +68,7 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.action == 'opened'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
     steps:
       - name: Checkout
@@ -100,19 +99,25 @@ jobs:
             }
 
             if (labels.size > 0) {
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                labels: [...labels]
-              });
-              console.log('Added labels:', [...labels]);
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: [...labels]
+                });
+                console.log('Added labels:', [...labels]);
+              } catch (e) {
+                console.log('Could not add labels (they may not exist):', e.message);
+              }
             }
 
   # Validate PR has Linear issue reference
   validate-linear-reference:
     if: github.event_name == 'pull_request' && github.event.action == 'opened'
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - name: Check for Linear Issue Reference
         uses: actions/github-script@v7
@@ -136,19 +141,23 @@ jobs:
             if (!hasLinearRef && !hasGithubRef) {
               core.warning('PR should reference a Linear issue (SUI-XXX) or GitHub issue (Closes #XXX)');
 
+              const commentBody = [
+                '### Issue Reference Missing',
+                '',
+                "This PR doesn't appear to reference a Linear issue or GitHub issue.",
+                '',
+                'Please update the PR title or description to include:',
+                '- Linear: `SUI-123` in title or body',
+                '- GitHub: `Closes #123` in body',
+                '',
+                'This helps track work and automatically update issue status.'
+              ].join('\n');
+
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: `### Issue Reference Missing
-
-            This PR doesn't appear to reference a Linear issue or GitHub issue.
-
-            Please update the PR title or description to include:
-            - Linear: \`SUI-123\` in title or body
-            - GitHub: \`Closes #123\` in body
-
-            This helps track work and automatically update issue status.`
+                body: commentBody
               });
             } else {
               console.log('Issue reference found');
@@ -160,6 +169,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: write
+      pull-requests: read
     steps:
       - name: Extract and Link GitHub Issue
         uses: actions/github-script@v7
@@ -169,23 +179,33 @@ jobs:
 
             // Find GitHub issue references
             const matches = body.match(/(closes|fixes|resolves)\s*#(\d+)/gi);
-            if (!matches) return;
+            if (!matches) {
+              console.log('No GitHub issue references found');
+              return;
+            }
 
             for (const match of matches) {
-              const issueNum = match.match(/#(\d+)/)[1];
+              const issueNumMatch = match.match(/#(\d+)/);
+              if (!issueNumMatch) continue;
+
+              const issueNum = issueNumMatch[1];
+
+              const commentBody = [
+                '### PR Created',
+                '',
+                `PR #${context.issue.number} has been opened for this issue.`,
+                '',
+                `**Title:** ${context.payload.pull_request.title}`,
+                `**Author:** @${context.payload.pull_request.user.login}`,
+                `**Link:** ${context.payload.pull_request.html_url}`
+              ].join('\n');
 
               try {
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: parseInt(issueNum),
-                  body: `### PR Created
-
-            PR #${context.issue.number} has been opened for this issue.
-
-            **Title:** ${context.payload.pull_request.title}
-            **Author:** @${context.payload.pull_request.user.login}
-            **Link:** ${context.payload.pull_request.html_url}`
+                  body: commentBody
                 });
                 console.log(`Commented on issue #${issueNum}`);
               } catch (e) {
