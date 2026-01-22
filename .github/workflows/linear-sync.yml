@@ -17,51 +17,56 @@ jobs:
     steps:
       - name: Extract Linear Issue ID from PR
         id: extract
-        run: |
-          # Extract SUI-XXX from PR title or body
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_BODY="${{ github.event.pull_request.body }}"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title || '';
+            const body = context.payload.pull_request.body || '';
+            const branch = context.payload.pull_request.head.ref || '';
 
-          # Try to find Linear issue ID (format: SUI-123)
-          ISSUE_ID=$(echo "$PR_TITLE $PR_BODY" | grep -oE 'SUI-[0-9]+' | head -1 || echo "")
-          echo "issue_id=$ISSUE_ID" >> $GITHUB_OUTPUT
+            // Try to find Linear issue ID (format: SUI-123)
+            const pattern = /SUI-\d+/i;
+            const match = `${title} ${body} ${branch}`.match(pattern);
+            const issueId = match ? match[0].toUpperCase() : '';
 
-          if [ -n "$ISSUE_ID" ]; then
-            echo "Found Linear Issue: $ISSUE_ID"
-          else
-            echo "No Linear Issue ID found in PR"
-          fi
+            if (issueId) {
+              console.log(`Found Linear Issue: ${issueId}`);
+            } else {
+              console.log('No Linear Issue ID found in PR');
+            }
+
+            core.setOutput('issue_id', issueId);
 
       - name: Update Linear Issue Status
-        if: steps.extract.outputs.issue_id != '' && env.LINEAR_API_KEY != ''
+        if: steps.extract.outputs.issue_id != ''
+        uses: actions/github-script@v7
         env:
-          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           ISSUE_ID: ${{ steps.extract.outputs.issue_id }}
-          PR_STATE: ${{ github.event.pull_request.state }}
-          PR_MERGED: ${{ github.event.pull_request.merged }}
-          PR_DRAFT: ${{ github.event.pull_request.draft }}
-        run: |
-          # Determine target status based on PR state
-          if [ "$PR_MERGED" = "true" ]; then
-            STATUS="Done"
-            echo "PR merged - marking as Done"
-          elif [ "$PR_STATE" = "closed" ]; then
-            echo "PR closed without merge - no status change"
-            exit 0
-          elif [ "$PR_DRAFT" = "true" ]; then
-            STATUS="In Progress"
-            echo "PR is draft - marking as In Progress"
-          else
-            STATUS="In Review"
-            echo "PR ready for review - marking as In Review"
-          fi
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const issueId = process.env.ISSUE_ID;
 
-          echo "Updating $ISSUE_ID to status: $STATUS"
+            let status;
+            if (pr.merged) {
+              status = 'Done';
+              console.log('PR merged - marking as Done');
+            } else if (pr.state === 'closed') {
+              console.log('PR closed without merge - no status change');
+              return;
+            } else if (pr.draft) {
+              status = 'In Progress';
+              console.log('PR is draft - marking as In Progress');
+            } else {
+              status = 'In Review';
+              console.log('PR ready for review - marking as In Review');
+            }
 
-          # Note: Actual Linear API call would go here
-          # Linear's GitHub integration handles this automatically if connected
-          # This is a placeholder for custom implementations
-          echo "::notice::Linear Issue $ISSUE_ID should be updated to '$STATUS'"
+            console.log(`Updating ${issueId} to status: ${status}`);
+
+            // Note: Actual Linear API call would go here
+            // Linear's GitHub integration handles this automatically if connected
+            core.notice(`Linear Issue ${issueId} should be updated to '${status}'`);
 
   # Auto-label PRs based on changed files
   auto-label-pr:
