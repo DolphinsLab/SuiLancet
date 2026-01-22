@@ -92,25 +92,78 @@
 
 ## 3. 设置工作流状态
 
+> **注意**: 工作流状态是在 **Team Settings** 中配置的，而不是 Project Settings。
+
 ### 步骤
 
-1. 进入 **Settings** → **Workflow**
-2. 配置以下状态：
+1. 点击左侧边栏你的 **Team 名称** (例如 "SuiLancet" 或你的团队名)
+2. 点击 Team 名称旁边的 **齿轮图标 ⚙️** 或 **"..."** 菜单
+3. 选择 **"Team Settings"** 或 **"Settings"**
+4. 在左侧菜单中选择 **"Workflow"**
+5. 你会看到状态列表，可以：
+   - **添加状态**: 点击 "Add status" 按钮
+   - **编辑状态**: 点击状态名称进行编辑
+   - **删除状态**: 点击状态右侧的 "..." 菜单
+   - **拖拽排序**: 拖动状态改变顺序
+
+### 替代路径 (快捷方式)
+
+```
+方法 1: 键盘快捷键
+按 G 然后按 S → 打开设置 → 选择你的 Team → Workflow
+
+方法 2: 命令面板
+按 Cmd/Ctrl + K → 输入 "workflow" → 选择 "Go to team workflow settings"
+
+方法 3: URL 直接访问
+https://linear.app/[你的workspace]/settings/teams/[team-id]/workflow
+```
 
 ### 推荐状态流
 
 ```
-Backlog → Todo → In Progress → In Review → Done → Canceled
+┌──────────┐    ┌──────┐    ┌─────────────┐    ┌───────────┐    ┌──────┐
+│ Backlog  │ →  │ Todo │ →  │ In Progress │ →  │ In Review │ →  │ Done │
+└──────────┘    └──────┘    └─────────────┘    └───────────┘    └──────┘
+                                                                    │
+                                                              ┌─────┴─────┐
+                                                              │ Canceled  │
+                                                              └───────────┘
 ```
 
-| 状态 | 类型 | 说明 |
+### 状态配置详情
+
+| 状态 | 类型 | 颜色 | 说明 |
+|------|------|------|------|
+| **Backlog** | Backlog | 灰色 | 待评估的任务池 |
+| **Todo** | Unstarted | 蓝色 | 已评估，等待开始 |
+| **In Progress** | Started | 黄色 | 正在开发中 |
+| **In Review** | Started | 紫色 | PR 已提交，等待审核 |
+| **Done** | Completed | 绿色 | 已完成并合并 |
+| **Canceled** | Canceled | 红色 | 已取消/不再需要 |
+
+### 添加自定义状态 (In Review)
+
+Linear 默认可能没有 "In Review" 状态，需要手动添加：
+
+1. 在 Workflow 设置页面，点击 **"Add status"**
+2. 填写：
+   - **Name**: `In Review`
+   - **Type**: 选择 `Started` (进行中类型)
+   - **Color**: 选择紫色
+   - **Description**: `PR 已提交，等待代码审核`
+3. 将其拖动到 "In Progress" 和 "Done" 之间
+4. 点击 **Save** 保存
+
+### 状态类型说明
+
+| 类型 | 含义 | 用途 |
 |------|------|------|
-| **Backlog** | Backlog | 待评估的任务池 |
-| **Todo** | Unstarted | 已评估，等待开始 |
-| **In Progress** | Started | 正在开发中 |
-| **In Review** | Started | PR 已提交，等待审核 |
-| **Done** | Completed | 已完成并合并 |
-| **Canceled** | Canceled | 已取消/不再需要 |
+| **Backlog** | 待办池 | 未计划的任务 |
+| **Unstarted** | 未开始 | 已计划但未开始 |
+| **Started** | 进行中 | 正在处理的任务 |
+| **Completed** | 已完成 | 成功完成的任务 |
+| **Canceled** | 已取消 | 不再需要的任务 |
 
 ---
 
