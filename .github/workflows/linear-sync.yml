@@ -1,0 +1,219 @@
+name: Linear Sync
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed, converted_to_draft, ready_for_review]
+  issues:
+    types: [opened, closed, reopened]
+
+env:
+  LINEAR_TEAM_KEY: SUI
+
+jobs:
+  # Sync PR status to Linear
+  sync-pr-to-linear:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract Linear Issue ID from PR
+        id: extract
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title || '';
+            const body = context.payload.pull_request.body || '';
+            const branch = context.payload.pull_request.head.ref || '';
+
+            // Try to find Linear issue ID (format: SUI-123)
+            const pattern = /SUI-\d+/i;
+            const match = `${title} ${body} ${branch}`.match(pattern);
+            const issueId = match ? match[0].toUpperCase() : '';
+
+            if (issueId) {
+              console.log(`Found Linear Issue: ${issueId}`);
+            } else {
+              console.log('No Linear Issue ID found in PR');
+            }
+
+            core.setOutput('issue_id', issueId);
+
+      - name: Update Linear Issue Status
+        if: steps.extract.outputs.issue_id != ''
+        uses: actions/github-script@v7
+        env:
+          ISSUE_ID: ${{ steps.extract.outputs.issue_id }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const issueId = process.env.ISSUE_ID;
+
+            let status;
+            if (pr.merged) {
+              status = 'Done';
+              console.log('PR merged - marking as Done');
+            } else if (pr.state === 'closed') {
+              console.log('PR closed without merge - no status change');
+              return;
+            } else if (pr.draft) {
+              status = 'In Progress';
+              console.log('PR is draft - marking as In Progress');
+            } else {
+              status = 'In Review';
+              console.log('PR ready for review - marking as In Review');
+            }
+
+            console.log(`Updating ${issueId} to status: ${status}`);
+
+            // Note: Actual Linear API call would go here
+            // Linear's GitHub integration handles this automatically if connected
+            core.notice(`Linear Issue ${issueId} should be updated to '${status}'`);
+
+  # Auto-label PRs based on changed files
+  auto-label-pr:
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed areas and add labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            const labels = new Set();
+
+            for (const file of files) {
+              const path = file.filename;
+
+              // Detect module based on file path
+              if (path.startsWith('web/')) labels.add('web');
+              if (path.startsWith('src/cli')) labels.add('cli');
+              if (path.startsWith('src/') && !path.startsWith('src/cli')) labels.add('sdk');
+              if (path.includes('cetus') || path.includes('deepbook')) labels.add('dex');
+              if (path.startsWith('docs/') || path.endsWith('.md')) labels.add('docs');
+              if (path.startsWith('tests/') || path.includes('.test.')) labels.add('test');
+            }
+
+            if (labels.size > 0) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: [...labels]
+                });
+                console.log('Added labels:', [...labels]);
+              } catch (e) {
+                console.log('Could not add labels (they may not exist):', e.message);
+              }
+            }
+
+  # Validate PR has Linear issue reference
+  validate-linear-reference:
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Check for Linear Issue Reference
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const title = pr.title || '';
+            const body = pr.body || '';
+            const branch = pr.head.ref || '';
+
+            // Check for Linear issue reference (SUI-XXX)
+            const linearPattern = /SUI-\d+/i;
+            const hasLinearRef = linearPattern.test(title) ||
+                                 linearPattern.test(body) ||
+                                 linearPattern.test(branch);
+
+            // Check for GitHub issue reference (#XXX)
+            const githubPattern = /(closes|fixes|resolves)\s*#\d+/i;
+            const hasGithubRef = githubPattern.test(body);
+
+            if (!hasLinearRef && !hasGithubRef) {
+              core.warning('PR should reference a Linear issue (SUI-XXX) or GitHub issue (Closes #XXX)');
+
+              const commentBody = [
+                '### Issue Reference Missing',
+                '',
+                "This PR doesn't appear to reference a Linear issue or GitHub issue.",
+                '',
+                'Please update the PR title or description to include:',
+                '- Linear: `SUI-123` in title or body',
+                '- GitHub: `Closes #123` in body',
+                '',
+                'This helps track work and automatically update issue status.'
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            } else {
+              console.log('Issue reference found');
+            }
+
+  # Comment on issue when PR is created
+  link-pr-to-issue:
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Extract and Link GitHub Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+
+            // Find GitHub issue references
+            const matches = body.match(/(closes|fixes|resolves)\s*#(\d+)/gi);
+            if (!matches) {
+              console.log('No GitHub issue references found');
+              return;
+            }
+
+            for (const match of matches) {
+              const issueNumMatch = match.match(/#(\d+)/);
+              if (!issueNumMatch) continue;
+
+              const issueNum = issueNumMatch[1];
+
+              const commentBody = [
+                '### PR Created',
+                '',
+                `PR #${context.issue.number} has been opened for this issue.`,
+                '',
+                `**Title:** ${context.payload.pull_request.title}`,
+                `**Author:** @${context.payload.pull_request.user.login}`,
+                `**Link:** ${context.payload.pull_request.html_url}`
+              ].join('\n');
+
+              try {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(issueNum),
+                  body: commentBody
+                });
+                console.log(`Commented on issue #${issueNum}`);
+              } catch (e) {
+                console.log(`Could not comment on issue #${issueNum}: ${e.message}`);
+              }
+            }
