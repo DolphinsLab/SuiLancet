@@ -2,6 +2,7 @@ import { program } from "commander"
 import { SuiScriptClient, NetworkEnv } from "../core"
 import { registerCleanCommands } from "./commands/clean"
 import { registerManageCommands } from "./commands/manage"
+import { registerSecureCommands } from "./commands/secure"
 import { registerQueryCommands } from "./commands/query"
 
 program
@@ -29,6 +30,7 @@ function getClient(): SuiScriptClient {
 
 registerCleanCommands(program, getClient)
 registerManageCommands(program, getClient)
+registerSecureCommands(program, getClient)
 registerQueryCommands(program, getClient)
 
 program.configureOutput({
