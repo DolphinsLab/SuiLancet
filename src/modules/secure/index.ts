@@ -1,4 +1,3 @@
-// Secure module - placeholder for Phase 3 features
-// - Transaction simulator
-// - Wallet security scanner
-// - Gas optimizer
+export * from "./tx-simulator"
+export * from "./wallet-scanner"
+export * from "./gas-optimizer"

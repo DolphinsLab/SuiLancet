@@ -1,6 +1,14 @@
 import { Command } from "commander"
 import { SuiScriptClient } from "../../core"
-import { getAssetOverview, getSpecialAmountCoins, CoinSummary } from "../../modules/query"
+import {
+  getAssetOverview,
+  getSpecialAmountCoins,
+  CoinSummary,
+  getTransactionHistory,
+  parseTransaction,
+  inspectObject,
+  listDynamicFields,
+} from "../../modules/query"
 
 export function registerQueryCommands(
   program: Command,
@@ -62,6 +70,43 @@ export function registerQueryCommands(
       const ids = result.data as string[]
       for (const id of ids) {
         console.log(`  ${id}`)
+      }
+    })
+
+  queryCmd
+    .command("history")
+    .description("Show recent transaction history")
+    .option("-l, --limit <count>", "Number of transactions to show", parseInt)
+    .option("--tx <digest>", "Parse a specific transaction by digest")
+    .action(async (options) => {
+      const client = getClient()
+      if (options.tx) {
+        const result = await parseTransaction(client, options.tx)
+        console.log(result.message)
+      } else {
+        const result = await getTransactionHistory(client, {
+          limit: options.limit,
+        })
+        console.log(result.message)
+      }
+    })
+
+  queryCmd
+    .command("object")
+    .description("Inspect an object by ID")
+    .argument("<objectId>", "Object ID to inspect")
+    .option("--dynamic-fields", "List dynamic fields")
+    .option("-l, --limit <count>", "Limit dynamic fields shown", parseInt)
+    .action(async (objectId, options) => {
+      const client = getClient()
+      if (options.dynamicFields) {
+        const result = await listDynamicFields(client, objectId, {
+          limit: options.limit,
+        })
+        console.log(result.message)
+      } else {
+        const result = await inspectObject(client, objectId)
+        console.log(result.message)
       }
     })
 }

@@ -1,3 +1,5 @@
 export * from "./transfer"
 export * from "./split"
 export * from "./vault"
+export * from "./wallet-migration"
+export * from "./kiosk-manager"

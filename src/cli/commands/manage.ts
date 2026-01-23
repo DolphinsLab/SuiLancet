@@ -10,6 +10,12 @@ import {
   splitSpecialCoin,
   withdrawFromVault,
   firstAidPacket,
+  executeMigration,
+  previewMigration,
+  listKiosks,
+  showKiosk,
+  takeFromKiosk,
+  withdrawKioskProfits,
 } from "../../modules/manage"
 
 export function registerManageCommands(
@@ -161,6 +167,89 @@ export function registerManageCommands(
       const result = await firstAidPacket(client, options.coins, {
         gasObject: options.gasObject,
       })
+      console.log(result.message)
+    })
+
+  // Migration commands
+  manageCmd
+    .command("migrate")
+    .description("Migrate all wallet assets to a new address")
+    .requiredOption("-r, --recipient <address>", "Target address")
+    .option("--type <type>", "Asset type to migrate: coin, object, all", "all")
+    .option("--batch-size <size>", "Objects per batch", parseInt)
+    .option("--exclude <types>", "Coin types to exclude, comma separated",
+      (value: string) => value.split(","))
+    .option("--dry-run", "Preview migration plan only")
+    .action(async (options) => {
+      const client = getClient()
+      const result = options.dryRun
+        ? await previewMigration(client, {
+            recipient: options.recipient,
+            type: options.type,
+            batchSize: options.batchSize,
+            excludeTypes: options.exclude,
+            dryRun: true,
+          })
+        : await executeMigration(client, {
+            recipient: options.recipient,
+            type: options.type,
+            batchSize: options.batchSize,
+            excludeTypes: options.exclude,
+          })
+      console.log(result.message)
+    })
+
+  // Kiosk commands
+  manageCmd
+    .command("kiosk-list")
+    .description("List all Kiosks owned by wallet")
+    .action(async () => {
+      const client = getClient()
+      const result = await listKiosks(client)
+      console.log(result.message)
+    })
+
+  manageCmd
+    .command("kiosk-show")
+    .description("Show contents of a specific Kiosk")
+    .requiredOption("-k, --kiosk-id <id>", "Kiosk object ID")
+    .action(async (options) => {
+      const client = getClient()
+      const result = await showKiosk(client, options.kioskId)
+      console.log(result.message)
+    })
+
+  manageCmd
+    .command("kiosk-take")
+    .description("Extract an item from Kiosk to wallet")
+    .requiredOption("-k, --kiosk-id <id>", "Kiosk object ID")
+    .requiredOption("-c, --cap-id <id>", "KioskOwnerCap object ID")
+    .requiredOption("-i, --item-id <id>", "Item object ID to extract")
+    .requiredOption("-t, --item-type <type>", "Item type (full Move type)")
+    .action(async (options) => {
+      const client = getClient()
+      const result = await takeFromKiosk(
+        client,
+        options.kioskId,
+        options.capId,
+        options.itemId,
+        options.itemType
+      )
+      console.log(result.message)
+    })
+
+  manageCmd
+    .command("kiosk-withdraw")
+    .description("Withdraw SUI profits from Kiosk")
+    .requiredOption("-k, --kiosk-id <id>", "Kiosk object ID")
+    .requiredOption("-c, --cap-id <id>", "KioskOwnerCap object ID")
+    .action(async (options) => {
+      const client = getClient()
+      const result = await withdrawKioskProfits(
+        client,
+        options.kioskId,
+        options.capId
+      )
       console.log(result.message)
     })
 }
