@@ -22,7 +22,7 @@ export default function Dashboard() {
         <p className="text-gray-400 mb-8">Connect your wallet to get started</p>
         <div className="card max-w-md mx-auto">
           <p className="text-gray-300">
-            SuiLancet is a lightweight tool for managing multiple Sui wallets and backends in one place.
+            SuiLancet is your Sui on-chain utility toolkit — cleanup dust coins, batch transfer assets, scan wallet security, and query chain data.
           </p>
         </div>
       </div>
