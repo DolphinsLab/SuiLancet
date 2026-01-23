@@ -3,10 +3,10 @@ import Layout from './components/Layout'
 import { ToastProvider } from './components/Toast'
 import { TransactionToastProvider } from './components/TransactionToast'
 import Dashboard from './pages/Dashboard'
-import Coin from './pages/Coin'
-import Transaction from './pages/Transaction'
-import Swap from './pages/Swap'
-import Vault from './pages/Vault'
+import Clean from './pages/Clean'
+import Manage from './pages/Manage'
+import Secure from './pages/Transaction'
+import Query from './pages/Query'
 import Settings from './pages/Settings'
 
 function App() {
@@ -16,10 +16,10 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/coin" element={<Coin />} />
-            <Route path="/transaction" element={<Transaction />} />
-            <Route path="/swap" element={<Swap />} />
-            <Route path="/vault" element={<Vault />} />
+            <Route path="/clean" element={<Clean />} />
+            <Route path="/manage" element={<Manage />} />
+            <Route path="/secure" element={<Secure />} />
+            <Route path="/query" element={<Query />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Layout>

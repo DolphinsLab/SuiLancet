@@ -256,8 +256,8 @@ export default function Coin() {
   if (!account) {
     return (
       <div className="text-center py-20">
-        <h1 className="text-2xl font-bold text-white mb-4">Coin Management</h1>
-        <p className="text-gray-400">Connect your wallet to manage coins</p>
+        <h1 className="text-2xl font-bold text-white mb-4">Wallet Cleanup</h1>
+        <p className="text-gray-400">Connect your wallet to clean up coins</p>
       </div>
     )
   }
@@ -277,7 +277,7 @@ export default function Coin() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-white">Coin Management</h1>
+        <h1 className="text-2xl font-bold text-white">Wallet Cleanup</h1>
         <div className="flex items-center gap-4">
           <span className="text-gray-400 text-sm">
             {isLoading ? 'Loading...' : (

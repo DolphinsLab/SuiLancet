@@ -8,10 +8,10 @@ interface LayoutProps {
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
-  { path: '/coin', label: 'Coin', icon: '🪙' },
-  { path: '/transaction', label: 'Transaction', icon: '📝' },
-  { path: '/swap', label: 'Swap', icon: '🔄' },
-  { path: '/vault', label: 'Vault', icon: '🏦' },
+  { path: '/clean', label: 'Clean', icon: '🧹' },
+  { path: '/manage', label: 'Manage', icon: '📦' },
+  { path: '/secure', label: 'Secure', icon: '🛡️' },
+  { path: '/query', label: 'Query', icon: '🔍' },
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
