@@ -12,7 +12,7 @@ export default defineConfig([
   },
   // CLI build config
   {
-    entry: ["src/cli.ts"],
+    entry: ["src/cli/index.ts"],
     format: ["cjs"],
     target: "node18",
     splitting: false,
@@ -21,7 +21,7 @@ export default defineConfig([
     banner: {
       js: "#!/usr/bin/env node",
     },
-    outDir: "dist",
+    outDir: "dist/cli",
     outExtension() {
       return {
         js: ".js",

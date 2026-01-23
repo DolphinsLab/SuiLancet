@@ -49,21 +49,3 @@ export function mintZeroCoin(
   })
 }
 
-export function checkCoinThreshold(
-  txb: Transaction,
-  coin: TransactionObjectArgument,
-  coinType: string,
-  amountLimit: number,
-  env: string
-) {
-  const aggregator_published_at =
-    env === "testnet"
-      ? "0x0"
-      : "0x868a192f542e819de99f8f289d7d6b47126e5da3103108fbc01d16cfd6be569a"
-
-  txb.moveCall({
-    target: `${aggregator_published_at}::utils::check_coin_threshold`,
-    typeArguments: [coinType],
-    arguments: [coin, txb.pure.u64(amountLimit.toString())],
-  })
-}

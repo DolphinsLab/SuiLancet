@@ -1,5 +1,5 @@
 import { ObjectRef } from "@mysten/sui/transactions"
-import { SuiScriptClient } from "../client"
+import { SuiScriptClient } from "../core/client"
 
 export async function getObjectRef(
   client: SuiScriptClient,
