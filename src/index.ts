@@ -1,5 +1,7 @@
-export * from "./client"
-export * from "./types"
+export * from "./core"
 export * from "./movecall"
-export * from "./methods"
 export * from "./common"
+export * as clean from "./modules/clean"
+export * as manage from "./modules/manage"
+export * as query from "./modules/query"
+
