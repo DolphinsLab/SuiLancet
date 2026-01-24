@@ -4,6 +4,7 @@ import { registerCleanCommands } from "./commands/clean"
 import { registerManageCommands } from "./commands/manage"
 import { registerSecureCommands } from "./commands/secure"
 import { registerQueryCommands } from "./commands/query"
+import { registerDefiCommands } from "./commands/defi"
 
 program
   .name("sui-lancet")
@@ -32,6 +33,7 @@ registerCleanCommands(program, getClient)
 registerManageCommands(program, getClient)
 registerSecureCommands(program, getClient)
 registerQueryCommands(program, getClient)
+registerDefiCommands(program, getClient)
 
 program.configureOutput({
   writeErr: (str) => process.stderr.write(`[Error] ${str}`),
