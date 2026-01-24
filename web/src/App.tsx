@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import { ToastProvider } from './components/Toast'
 import { TransactionToastProvider } from './components/TransactionToast'
 import Dashboard from './pages/Dashboard'
+import Portfolio from './pages/Portfolio'
 import Clean from './pages/Clean'
 import Manage from './pages/Manage'
 import Secure from './pages/Transaction'
@@ -16,6 +17,7 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/clean" element={<Clean />} />
             <Route path="/manage" element={<Manage />} />
             <Route path="/secure" element={<Secure />} />
