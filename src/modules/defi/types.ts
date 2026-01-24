@@ -2,7 +2,7 @@
  * DeFi Position Tracker Types
  */
 
-export type PositionCategory = "lending" | "lp" | "staking"
+export type PositionCategory = "lending" | "lp" | "staking" | "perps"
 
 export interface DeFiPosition {
   protocol: string
@@ -56,6 +56,21 @@ export interface StakingPosition extends DeFiPosition {
   valueUsd?: number
 }
 
+export interface PerpsPosition extends DeFiPosition {
+  category: "perps"
+  market: string
+  side: "long" | "short"
+  size: number
+  entryPrice?: number
+  markPrice?: number
+  margin: number
+  leverage?: number
+  unrealizedPnl?: number
+  marginToken: string
+  decimals: number
+  valueUsd?: number
+}
+
 export interface PortfolioSummary {
   walletAddress: string
   totalValueUsd: number
@@ -72,6 +87,11 @@ export interface PortfolioSummary {
   staking: {
     totalValueUsd: number
     positions: StakingPosition[]
+  }
+  perps: {
+    totalMarginUsd: number
+    totalUnrealizedPnl: number
+    positions: PerpsPosition[]
   }
   lastUpdated: number
 }

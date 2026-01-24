@@ -42,6 +42,46 @@ export const TURBOS = {
   NAME: "Turbos Finance",
 } as const
 
+// --- Aftermath Finance ---
+export const AFTERMATH = {
+  PACKAGE: "0x7f6ce7ade63857c4fd16ef7571b295d7e8d1d2f0f3da24be63e5c04b0d58afc1",
+  POOL_TYPE_PATTERN: "::pool::Pool",
+  LP_COIN_PATTERN: "::pool::AfLpCoin",
+  NAME: "Aftermath",
+} as const
+
+// --- Kriya DEX ---
+export const KRIYA = {
+  PACKAGE: "0xa0eba10b173538c8fecca1dff298e488402cc9ff374f8a12ca7758eebe5b0521",
+  POSITION_TYPE_PATTERN: "::position::Position",
+  LP_TOKEN_PATTERN: "::spot_dex::KriyaLPToken",
+  NAME: "Kriya",
+} as const
+
+// --- Bucket Protocol ---
+export const BUCKET = {
+  PACKAGE: "0xce7ff77a83ea0cb6fd39bd8748e2ec89a3f41e8efdc3f4eb123e0ca37b184db2",
+  BOTTLE_TYPE_PATTERN: "::bucket::Bottle",
+  BUCK_COIN_TYPE:
+    "0xce7ff77a83ea0cb6fd39bd8748e2ec89a3f41e8efdc3f4eb123e0ca37b184db2::buck::BUCK",
+  NAME: "Bucket Protocol",
+} as const
+
+// --- Bluefin ---
+export const BLUEFIN = {
+  PACKAGE: "0x3737fa5f3548cf0981ee5837e5caff44df7f8bb757afab728b0e58a308fce4de",
+  ACCOUNT_TYPE_PATTERN: "::isolated_trading::TraderAccount",
+  POSITION_TYPE_PATTERN: "::isolated_trading::Position",
+  NAME: "Bluefin",
+} as const
+
+// --- FlowX ---
+export const FLOWX = {
+  PACKAGE: "0xba153169476e8c3114962261d1edc70de5ad9b18b1c21f3e823bfb13e8e0b124",
+  LP_TOKEN_PATTERN: "::pair::LPCoin",
+  NAME: "FlowX",
+} as const
+
 // --- Liquid Staking Tokens ---
 export const LIQUID_STAKING = {
   haSUI: {
@@ -70,6 +110,20 @@ export const LIQUID_STAKING = {
       "0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf::msui::MSUI",
     name: "Momentum Staked SUI",
     symbol: "mSUI",
+    protocol: "Momentum",
+  },
+  sSUI: {
+    coinType:
+      "0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf::ssui::SSUI",
+    name: "SpringSui Staked SUI",
+    symbol: "sSUI",
+    protocol: "Suilend (SpringSui)",
+  },
+  xSUI: {
+    coinType:
+      "0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf::xsui::XSUI",
+    name: "Momentum xSUI",
+    symbol: "xSUI",
     protocol: "Momentum",
   },
 } as const

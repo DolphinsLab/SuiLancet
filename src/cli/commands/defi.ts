@@ -6,6 +6,7 @@ import {
   LendingPosition,
   LPPosition,
   StakingPosition,
+  PerpsPosition,
 } from "../../modules/defi"
 
 export function registerDefiCommands(
@@ -22,14 +23,14 @@ export function registerDefiCommands(
     .option("--no-price", "Skip USD price fetching")
     .option(
       "-c, --category <category>",
-      "Filter by category (lending, lp, staking)"
+      "Filter by category (lending, lp, staking, perps)"
     )
     .action(async (options) => {
       const client = getClient()
 
       const categories = options.category
         ? [options.category]
-        : ["lending", "lp", "staking"]
+        : ["lending", "lp", "staking", "perps"]
 
       console.log("Scanning DeFi positions...")
       console.log("")
@@ -54,7 +55,7 @@ export function registerDefiCommands(
 
   defiCmd
     .command("lending")
-    .description("Show lending positions (NAVI, Suilend, Scallop)")
+    .description("Show lending positions (NAVI, Suilend, Scallop, Bucket)")
     .action(async () => {
       const client = getClient()
       console.log("Scanning lending positions...")
@@ -81,7 +82,7 @@ export function registerDefiCommands(
 
   defiCmd
     .command("lp")
-    .description("Show LP positions (Cetus, Turbos)")
+    .description("Show LP positions (Cetus, Turbos, Aftermath, Kriya, FlowX)")
     .action(async () => {
       const client = getClient()
       console.log("Scanning LP positions...")
@@ -132,6 +133,33 @@ export function registerDefiCommands(
         `  Total Staking Value: $${portfolio.staking.totalValueUsd.toFixed(2)}`
       )
     })
+
+  defiCmd
+    .command("perps")
+    .description("Show perpetual futures positions (Bluefin)")
+    .action(async () => {
+      const client = getClient()
+      console.log("Scanning perps positions...")
+      console.log("")
+
+      const result = await getDefiPositions(
+        client.client,
+        client.walletAddress,
+        { categories: ["perps"] }
+      )
+
+      if (!result.success) {
+        console.error(result.message)
+        return
+      }
+
+      const portfolio = result.data as PortfolioSummary
+      printPerpsPositions(portfolio.perps.positions)
+      console.log("")
+      console.log(
+        `  Total Margin: $${portfolio.perps.totalMarginUsd.toFixed(2)} | Unrealized PnL: $${portfolio.perps.totalUnrealizedPnl.toFixed(2)}`
+      )
+    })
 }
 
 function printPortfolio(portfolio: PortfolioSummary) {
@@ -180,10 +208,23 @@ function printPortfolio(portfolio: PortfolioSummary) {
     console.log("")
   }
 
+  // Perps
+  if (portfolio.perps.positions.length > 0) {
+    console.log("-".repeat(60))
+    console.log("  PERPETUALS")
+    console.log("-".repeat(60))
+    printPerpsPositions(portfolio.perps.positions)
+    console.log(
+      `  Margin: $${portfolio.perps.totalMarginUsd.toFixed(2)} | Unrealized PnL: $${portfolio.perps.totalUnrealizedPnl.toFixed(2)}`
+    )
+    console.log("")
+  }
+
   if (
     portfolio.lending.positions.length === 0 &&
     portfolio.lp.positions.length === 0 &&
-    portfolio.staking.positions.length === 0
+    portfolio.staking.positions.length === 0 &&
+    portfolio.perps.positions.length === 0
   ) {
     console.log("  No DeFi positions found in this wallet.")
   }
@@ -242,6 +283,32 @@ function printStakingPositions(positions: StakingPosition[]) {
     const usdStr = pos.valueUsd ? ` ($${pos.valueUsd.toFixed(2)})` : ""
     console.log(`  [${pos.protocol}] ${pos.symbol}: ${amountStr}${usdStr}`)
   }
+}
+
+function printPerpsPositions(positions: PerpsPosition[]) {
+  for (const pos of positions) {
+    const sideStr = pos.side === "long" ? "LONG" : "SHORT"
+    const sizeStr = formatAmount(pos.size, pos.decimals)
+    const marginStr = formatAmount(pos.margin, pos.decimals)
+    const leverageStr = pos.leverage ? `${pos.leverage.toFixed(1)}x` : ""
+    console.log(
+      `  [${pos.protocol}] ${pos.market} ${sideStr} ${leverageStr}`
+    )
+    console.log(`    Size: ${sizeStr} ${pos.marginToken} | Margin: ${marginStr} ${pos.marginToken}`)
+    if (pos.entryPrice) {
+      console.log(`    Entry: $${formatPrice(pos.entryPrice, pos.decimals)}`)
+    }
+    if (pos.unrealizedPnl !== undefined) {
+      const pnlSign = pos.unrealizedPnl >= 0 ? "+" : ""
+      console.log(`    Unrealized PnL: ${pnlSign}$${pos.unrealizedPnl.toFixed(2)}`)
+    }
+    console.log("")
+  }
+}
+
+function formatPrice(price: number, decimals: number): string {
+  const value = price / Math.pow(10, decimals)
+  return value.toFixed(2)
 }
 
 function formatAmount(amount: number, decimals: number): string {

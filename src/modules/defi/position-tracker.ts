@@ -4,19 +4,25 @@ import {
   LendingPosition,
   LPPosition,
   StakingPosition,
+  PerpsPosition,
 } from "./types"
 import { fetchNaviPositions } from "./protocols/navi"
 import { fetchSuilendPositions } from "./protocols/suilend"
 import { fetchScallopPositions } from "./protocols/scallop"
+import { fetchBucketPositions } from "./protocols/bucket"
 import { fetchCetusPositions } from "./protocols/cetus-lp"
 import { fetchTurbosPositions } from "./protocols/turbos-lp"
+import { fetchAftermathPositions } from "./protocols/aftermath-lp"
+import { fetchKriyaPositions } from "./protocols/kriya-lp"
+import { fetchFlowXPositions } from "./protocols/flowx-lp"
 import { fetchLiquidStakingPositions } from "./protocols/liquid-staking"
+import { fetchBluefinPositions } from "./protocols/bluefin"
 import { fetchTokenPrices } from "../../common/price"
 import { CommandResult } from "../../core/types"
 
 export interface FetchOptions {
   /** Which categories to fetch. Defaults to all. */
-  categories?: ("lending" | "lp" | "staking")[]
+  categories?: ("lending" | "lp" | "staking" | "perps")[]
   /** Whether to fetch USD prices for positions. Defaults to true. */
   withPricing?: boolean
 }
@@ -30,12 +36,13 @@ export async function fetchAllPositions(
   walletAddress: string,
   options: FetchOptions = {}
 ): Promise<PortfolioSummary> {
-  const categories = options.categories || ["lending", "lp", "staking"]
+  const categories = options.categories || ["lending", "lp", "staking", "perps"]
   const withPricing = options.withPricing !== false
 
   const lendingPositions: LendingPosition[] = []
   const lpPositions: LPPosition[] = []
   const stakingPositions: StakingPosition[] = []
+  const perpsPositions: PerpsPosition[] = []
 
   // Fetch positions in parallel by category
   const promises: Promise<void>[] = []
@@ -64,6 +71,14 @@ export async function fetchAllPositions(
     )
   }
 
+  if (categories.includes("perps")) {
+    promises.push(
+      fetchPerpsPositions(client, walletAddress).then((positions) => {
+        perpsPositions.push(...positions)
+      })
+    )
+  }
+
   await Promise.allSettled(promises)
 
   // Optionally enrich with USD pricing
@@ -85,9 +100,17 @@ export async function fetchAllPositions(
     (sum, p) => sum + (p.valueUsd || 0),
     0
   )
+  const totalPerpsMargin = perpsPositions.reduce(
+    (sum, p) => sum + (p.margin / Math.pow(10, p.decimals)),
+    0
+  )
+  const totalUnrealizedPnl = perpsPositions.reduce(
+    (sum, p) => sum + (p.unrealizedPnl || 0),
+    0
+  )
 
   const totalValueUsd =
-    totalDepositsUsd - totalBorrowsUsd + totalLPUsd + totalStakingUsd
+    totalDepositsUsd - totalBorrowsUsd + totalLPUsd + totalStakingUsd + totalPerpsMargin
 
   return {
     walletAddress,
@@ -106,6 +129,11 @@ export async function fetchAllPositions(
       totalValueUsd: totalStakingUsd,
       positions: stakingPositions,
     },
+    perps: {
+      totalMarginUsd: totalPerpsMargin,
+      totalUnrealizedPnl,
+      positions: perpsPositions,
+    },
     lastUpdated: Date.now(),
   }
 }
@@ -121,6 +149,7 @@ async function fetchLendingPositions(
     fetchNaviPositions(client, walletAddress),
     fetchSuilendPositions(client, walletAddress),
     fetchScallopPositions(client, walletAddress),
+    fetchBucketPositions(client, walletAddress),
   ])
 
   const positions: LendingPosition[] = []
@@ -142,9 +171,32 @@ async function fetchLPPositions(
   const results = await Promise.allSettled([
     fetchCetusPositions(client, walletAddress),
     fetchTurbosPositions(client, walletAddress),
+    fetchAftermathPositions(client, walletAddress),
+    fetchKriyaPositions(client, walletAddress),
+    fetchFlowXPositions(client, walletAddress),
   ])
 
   const positions: LPPosition[] = []
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      positions.push(...result.value)
+    }
+  }
+  return positions
+}
+
+/**
+ * Fetch perpetual futures positions from all supported protocols.
+ */
+async function fetchPerpsPositions(
+  client: SuiClient,
+  walletAddress: string
+): Promise<PerpsPosition[]> {
+  const results = await Promise.allSettled([
+    fetchBluefinPositions(client, walletAddress),
+  ])
+
+  const positions: PerpsPosition[] = []
   for (const result of results) {
     if (result.status === "fulfilled") {
       positions.push(...result.value)
@@ -241,11 +293,12 @@ export async function getDefiPositions(
     const lendingCount = portfolio.lending.positions.length
     const lpCount = portfolio.lp.positions.length
     const stakingCount = portfolio.staking.positions.length
-    const totalPositions = lendingCount + lpCount + stakingCount
+    const perpsCount = portfolio.perps.positions.length
+    const totalPositions = lendingCount + lpCount + stakingCount + perpsCount
 
     return {
       success: true,
-      message: `Found ${totalPositions} DeFi position(s): ${lendingCount} lending, ${lpCount} LP, ${stakingCount} staking`,
+      message: `Found ${totalPositions} DeFi position(s): ${lendingCount} lending, ${lpCount} LP, ${stakingCount} staking, ${perpsCount} perps`,
       data: portfolio,
     }
   } catch (error: any) {
