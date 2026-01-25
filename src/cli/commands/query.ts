@@ -8,6 +8,12 @@ import {
   parseTransaction,
   inspectObject,
   listDynamicFields,
+  getDynamicFieldObject,
+  listDynamicFieldContents,
+  queryTableEntries,
+  getTableEntry,
+  queryLinkedTableEntries,
+  exploreDynamicObject,
 } from "../../modules/query"
 
 export function registerQueryCommands(
@@ -109,4 +115,124 @@ export function registerQueryCommands(
         console.log(result.message)
       }
     })
+
+  // Dynamic object query commands
+  queryCmd
+    .command("df")
+    .description("Get a dynamic field by name")
+    .argument("<parentId>", "Parent object ID")
+    .requiredOption("-t, --type <type>", "Key type (e.g., address, u64, 0x2::object::ID)")
+    .requiredOption("-v, --value <value>", "Key value")
+    .action(async (parentId, options) => {
+      const client = getClient()
+      const keyValue = parseKeyValue(options.type, options.value)
+      const result = await getDynamicFieldObject(client, parentId, {
+        type: options.type,
+        value: keyValue,
+      })
+      if (!result.success) {
+        console.error(result.message)
+      }
+    })
+
+  queryCmd
+    .command("df-list")
+    .description("List dynamic fields with content")
+    .argument("<parentId>", "Parent object ID")
+    .option("-l, --limit <count>", "Limit entries shown", parseInt)
+    .option("--cursor <cursor>", "Pagination cursor")
+    .action(async (parentId, options) => {
+      const client = getClient()
+      const result = await listDynamicFieldContents(client, parentId, {
+        limit: options.limit,
+        cursor: options.cursor,
+      })
+      if (!result.success) {
+        console.error(result.message)
+      }
+    })
+
+  queryCmd
+    .command("table")
+    .description("Query Table/ObjectTable/Bag/ObjectBag entries")
+    .argument("<tableId>", "Table or Bag object ID")
+    .option("-l, --limit <count>", "Limit entries shown", parseInt)
+    .option("--cursor <cursor>", "Pagination cursor")
+    .option("-k, --key <value>", "Get specific entry by key value")
+    .option("-t, --key-type <type>", "Key type for specific lookup")
+    .action(async (tableId, options) => {
+      const client = getClient()
+      if (options.key && options.keyType) {
+        const keyValue = parseKeyValue(options.keyType, options.key)
+        const result = await getTableEntry(client, tableId, options.keyType, keyValue)
+        if (!result.success) {
+          console.error(result.message)
+        }
+      } else {
+        const result = await queryTableEntries(client, tableId, {
+          limit: options.limit,
+          cursor: options.cursor,
+        })
+        if (!result.success) {
+          console.error(result.message)
+        }
+      }
+    })
+
+  queryCmd
+    .command("linked-table")
+    .description("Query LinkedTable entries in order")
+    .argument("<tableId>", "LinkedTable object ID")
+    .option("-l, --limit <count>", "Limit entries shown", parseInt)
+    .action(async (tableId, options) => {
+      const client = getClient()
+      const result = await queryLinkedTableEntries(client, tableId, {
+        limit: options.limit,
+      })
+      if (!result.success) {
+        console.error(result.message)
+      }
+    })
+
+  queryCmd
+    .command("explore")
+    .description("Recursively explore nested dynamic objects")
+    .argument("<objectId>", "Root object ID")
+    .option("-d, --depth <depth>", "Max exploration depth", parseInt)
+    .option("-l, --limit <count>", "Limit fields per level", parseInt)
+    .action(async (objectId, options) => {
+      const client = getClient()
+      const result = await exploreDynamicObject(client, objectId, {
+        depth: options.depth,
+        limit: options.limit,
+      })
+      if (!result.success) {
+        console.error(result.message)
+      }
+    })
+}
+
+/**
+ * Parse key value based on type.
+ */
+function parseKeyValue(type: string, value: string): unknown {
+  // Handle common Sui types
+  if (type === "u64" || type === "u128" || type === "u256") {
+    return value // Keep as string for big numbers
+  }
+  if (type === "u8" || type === "u16" || type === "u32") {
+    return parseInt(value, 10)
+  }
+  if (type === "bool") {
+    return value === "true"
+  }
+  if (type === "address" || type.includes("::ID") || type.includes("::UID")) {
+    return value // Address as string
+  }
+  // Try parsing as JSON for complex types
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
 }
