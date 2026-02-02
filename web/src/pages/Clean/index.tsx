@@ -229,16 +229,22 @@ export default function Coin() {
     if (count <= MAX_ARGS_PER_CALL) {
       // Single splitCoins call
       const amounts = Array(count).fill(amount)
-      txb.splitCoins(sourceCoin.coinObjectId, amounts)
+      const splitResult = txb.splitCoins(sourceCoin.coinObjectId, amounts)
+      // Transfer split coins back to self
+      txb.transferObjects([splitResult], account.address)
     } else {
       // Multiple splitCoins calls in single transaction
       let remaining = count
+      const allSplitResults = []
       for (let i = 0; i < count; i += MAX_ARGS_PER_CALL) {
         const batchSize = Math.min(MAX_ARGS_PER_CALL, remaining)
         const amounts = Array(batchSize).fill(amount)
-        txb.splitCoins(sourceCoin.coinObjectId, amounts)
+        const splitResult = txb.splitCoins(sourceCoin.coinObjectId, amounts)
+        allSplitResults.push(splitResult)
         remaining -= batchSize
       }
+      // Transfer all split coins back to self
+      txb.transferObjects(allSplitResults, account.address)
     }
 
     const callCount = Math.ceil(count / MAX_ARGS_PER_CALL)
@@ -353,22 +359,24 @@ export default function Coin() {
         ))}
       </div>
 
-      {/* Coin Type Selector */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-4">Select Coin Type</h2>
-        <select
-          value={selectedCoinType}
-          onChange={(e) => setSelectedCoinType(e.target.value)}
-          className="input w-full"
-        >
-          <option value="">Select a coin type...</option>
-          {Object.keys(coinsByType).map((coinType) => (
-            <option key={coinType} value={coinType}>
-              {coinType.split('::').pop()} ({coinsByType[coinType].length} coins)
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Coin Type Selector - hidden for gas action since it only works with SUI */}
+      {action !== 'gas' && (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-white mb-4">Select Coin Type</h2>
+          <select
+            value={selectedCoinType}
+            onChange={(e) => setSelectedCoinType(e.target.value)}
+            className="input w-full"
+          >
+            <option value="">Select a coin type...</option>
+            {Object.keys(coinsByType).map((coinType) => (
+              <option key={coinType} value={coinType}>
+                {coinType.split('::').pop()} ({coinsByType[coinType].length} coins)
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Action Panel */}
       <div className="card">
