@@ -6,7 +6,7 @@ import { useToast } from '../../components/Toast'
 
 type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransaction>['mutate']>[0]
 
-type CoinAction = 'merge' | 'split' | 'transfer' | 'destroy'
+type CoinAction = 'merge' | 'split' | 'transfer' | 'destroy' | 'gas'
 
 // Sui limits: 512 arguments per MoveCall, 131072 bytes max tx size
 const MAX_ARGS_PER_CALL = 511  // 512 - 1 (for primary coin)
@@ -30,6 +30,9 @@ export default function Coin() {
   const [splitAmount, setSplitAmount] = useState('')
   const [splitCount, setSplitCount] = useState('')
   const [mergeProgress, setMergeProgress] = useState<{ current: number; total: number } | null>(null)
+  const [gasMinBalance, setGasMinBalance] = useState('')
+  const [gasMaxBalance, setGasMaxBalance] = useState('')
+  const [gasCopied, setGasCopied] = useState(false)
   const [coins, setCoins] = useState<CoinStruct[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [hasMore, setHasMore] = useState(false)
@@ -262,6 +265,44 @@ export default function Coin() {
     )
   }
 
+  // Get all SUI gas objects with optional balance filter
+  const getFilteredGasObjects = () => {
+    const suiCoins = coins.filter(c =>
+      c.coinType === SUI_COIN_TYPE || c.coinType.endsWith('::sui::SUI')
+    )
+
+    let filtered = suiCoins
+
+    if (gasMinBalance) {
+      const minBal = BigInt(Math.floor(parseFloat(gasMinBalance) * 1e9))
+      filtered = filtered.filter(c => BigInt(c.balance) >= minBal)
+    }
+
+    if (gasMaxBalance) {
+      const maxBal = BigInt(Math.floor(parseFloat(gasMaxBalance) * 1e9))
+      filtered = filtered.filter(c => BigInt(c.balance) <= maxBal)
+    }
+
+    // Sort by balance descending
+    return filtered.sort((a, b) => Number(BigInt(b.balance) - BigInt(a.balance)))
+  }
+
+  const filteredGasObjects = getFilteredGasObjects()
+
+  const handleCopyGasObjects = async () => {
+    const objectIds = filteredGasObjects.map(c => `"${c.coinObjectId}"`)
+    const text = objectIds.join(',\n')
+
+    try {
+      await navigator.clipboard.writeText(text)
+      setGasCopied(true)
+      toast.success('Copied!', `${filteredGasObjects.length} gas object IDs copied to clipboard`)
+      setTimeout(() => setGasCopied(false), 2000)
+    } catch (err) {
+      toast.error('Copy Failed', 'Failed to copy to clipboard')
+    }
+  }
+
   // Group coins by type
   const coinsByType = coins.reduce((acc, coin) => {
     if (!acc[coin.coinType]) {
@@ -298,8 +339,8 @@ export default function Coin() {
       </div>
 
       {/* Action Tabs */}
-      <div className="flex space-x-2">
-        {(['merge', 'split', 'transfer', 'destroy'] as CoinAction[]).map((a) => (
+      <div className="flex space-x-2 flex-wrap gap-y-2">
+        {(['merge', 'split', 'transfer', 'destroy', 'gas'] as CoinAction[]).map((a) => (
           <button
             key={a}
             onClick={() => setAction(a)}
@@ -460,6 +501,82 @@ export default function Coin() {
             >
               {isPending ? 'Processing...' : 'Destroy Zero Coins'}
             </button>
+          </div>
+        )}
+
+        {action === 'gas' && (
+          <div className="space-y-4">
+            <p className="text-gray-400 text-sm">
+              Filter and copy all available SUI gas object IDs. Useful for batch operations.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Min Balance (SUI)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 0.1"
+                  value={gasMinBalance}
+                  onChange={(e) => setGasMinBalance(e.target.value.replace(/[^0-9.]/g, ''))}
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Max Balance (SUI)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 10"
+                  value={gasMaxBalance}
+                  onChange={(e) => setGasMaxBalance(e.target.value.replace(/[^0-9.]/g, ''))}
+                  className="input w-full"
+                />
+              </div>
+            </div>
+            <div className="bg-slate-700 rounded-lg p-3">
+              <div className="flex justify-between text-sm text-gray-300 mb-2">
+                <span>Filtered Gas Objects:</span>
+                <span className="text-white font-semibold">{filteredGasObjects.length}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-300">
+                <span>Total Balance:</span>
+                <span className="text-white font-mono">
+                  {(filteredGasObjects.reduce((sum, c) => sum + Number(c.balance), 0) / 1e9).toFixed(4)} SUI
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={handleCopyGasObjects}
+              disabled={filteredGasObjects.length === 0}
+              className={`btn-primary w-full disabled:opacity-50 ${gasCopied ? 'bg-green-600 hover:bg-green-700' : ''}`}
+            >
+              {gasCopied ? 'Copied!' : `Copy ${filteredGasObjects.length} Gas Object IDs`}
+            </button>
+
+            {/* Gas Objects List */}
+            {filteredGasObjects.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-gray-300 mb-2">Gas Objects Preview</h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {filteredGasObjects.slice(0, 50).map((coin) => (
+                    <div
+                      key={coin.coinObjectId}
+                      className="flex justify-between items-center py-2 px-3 bg-slate-600 rounded-lg"
+                    >
+                      <span className="font-mono text-xs text-gray-300">
+                        {coin.coinObjectId.slice(0, 16)}...{coin.coinObjectId.slice(-8)}
+                      </span>
+                      <span className="text-white text-sm">
+                        {(Number(coin.balance) / 1e9).toFixed(4)} SUI
+                      </span>
+                    </div>
+                  ))}
+                  {filteredGasObjects.length > 50 && (
+                    <div className="text-center text-gray-400 text-sm py-2">
+                      ... and {filteredGasObjects.length - 50} more
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
