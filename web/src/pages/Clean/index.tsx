@@ -224,12 +224,27 @@ export default function Coin() {
       return
     }
 
+    // Check if splitting SUI coins - need to set gas payment
+    const isSuiCoin = selectedCoinType === SUI_COIN_TYPE ||
+      selectedCoinType.endsWith('::sui::SUI')
+
     const txb = new Transaction()
+
+    // For SUI coins, set the source coin as gas payment and use txb.gas for split
+    if (isSuiCoin) {
+      txb.setGasPayment([{
+        objectId: sourceCoin.coinObjectId,
+        version: sourceCoin.version,
+        digest: sourceCoin.digest,
+      }])
+    }
+
+    const splitSource = isSuiCoin ? txb.gas : sourceCoin.coinObjectId
 
     if (count <= MAX_ARGS_PER_CALL) {
       // Single splitCoins call
       const amounts = Array(count).fill(amount)
-      const splitResult = txb.splitCoins(sourceCoin.coinObjectId, amounts)
+      const splitResult = txb.splitCoins(splitSource, amounts)
       // Transfer each split coin back to self (need to expand the result array)
       const splitCoins = []
       for (let i = 0; i < count; i++) {
@@ -243,7 +258,7 @@ export default function Coin() {
       for (let i = 0; i < count; i += MAX_ARGS_PER_CALL) {
         const batchSize = Math.min(MAX_ARGS_PER_CALL, remaining)
         const amounts = Array(batchSize).fill(amount)
-        const splitResult = txb.splitCoins(sourceCoin.coinObjectId, amounts)
+        const splitResult = txb.splitCoins(splitSource, amounts)
         // Expand each split result to individual coin references
         for (let j = 0; j < batchSize; j++) {
           allSplitCoins.push(splitResult[j])
