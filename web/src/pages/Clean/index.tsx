@@ -353,22 +353,24 @@ export default function Coin() {
         ))}
       </div>
 
-      {/* Coin Type Selector */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-4">Select Coin Type</h2>
-        <select
-          value={selectedCoinType}
-          onChange={(e) => setSelectedCoinType(e.target.value)}
-          className="input w-full"
-        >
-          <option value="">Select a coin type...</option>
-          {Object.keys(coinsByType).map((coinType) => (
-            <option key={coinType} value={coinType}>
-              {coinType.split('::').pop()} ({coinsByType[coinType].length} coins)
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Coin Type Selector - hidden for gas action since it only works with SUI */}
+      {action !== 'gas' && (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-white mb-4">Select Coin Type</h2>
+          <select
+            value={selectedCoinType}
+            onChange={(e) => setSelectedCoinType(e.target.value)}
+            className="input w-full"
+          >
+            <option value="">Select a coin type...</option>
+            {Object.keys(coinsByType).map((coinType) => (
+              <option key={coinType} value={coinType}>
+                {coinType.split('::').pop()} ({coinsByType[coinType].length} coins)
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Action Panel */}
       <div className="card">
