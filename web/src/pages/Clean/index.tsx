@@ -229,16 +229,22 @@ export default function Coin() {
     if (count <= MAX_ARGS_PER_CALL) {
       // Single splitCoins call
       const amounts = Array(count).fill(amount)
-      txb.splitCoins(sourceCoin.coinObjectId, amounts)
+      const splitResult = txb.splitCoins(sourceCoin.coinObjectId, amounts)
+      // Transfer split coins back to self
+      txb.transferObjects([splitResult], account.address)
     } else {
       // Multiple splitCoins calls in single transaction
       let remaining = count
+      const allSplitResults = []
       for (let i = 0; i < count; i += MAX_ARGS_PER_CALL) {
         const batchSize = Math.min(MAX_ARGS_PER_CALL, remaining)
         const amounts = Array(batchSize).fill(amount)
-        txb.splitCoins(sourceCoin.coinObjectId, amounts)
+        const splitResult = txb.splitCoins(sourceCoin.coinObjectId, amounts)
+        allSplitResults.push(splitResult)
         remaining -= batchSize
       }
+      // Transfer all split coins back to self
+      txb.transferObjects(allSplitResults, account.address)
     }
 
     const callCount = Math.ceil(count / MAX_ARGS_PER_CALL)
