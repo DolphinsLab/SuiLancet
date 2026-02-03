@@ -79,7 +79,7 @@ function TransactionToastItem({
     setTimeout(onClose, 300)
   }
 
-  const explorerUrl = `https://suiscan.xyz/mainnet/tx/${result.digest}`
+  const explorerUrl = `https://suivision.xyz/txblock/${result.digest}`
 
   return (
     <div
