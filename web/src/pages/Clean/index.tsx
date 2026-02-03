@@ -33,6 +33,8 @@ export default function Coin() {
   const [gasMinBalance, setGasMinBalance] = useState('')
   const [gasMaxBalance, setGasMaxBalance] = useState('')
   const [gasCopied, setGasCopied] = useState(false)
+  const [groupMode, setGroupMode] = useState<'none' | 'perGroup' | 'totalGroups'>('none')
+  const [groupValue, setGroupValue] = useState('')
   const [coins, setCoins] = useState<CoinStruct[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [hasMore, setHasMore] = useState(false)
@@ -319,12 +321,40 @@ export default function Coin() {
 
   const handleCopyGasObjects = async () => {
     const objectIds = filteredGasObjects.map(c => `"${c.coinObjectId}"`)
-    const text = objectIds.join(',\n')
+
+    let text: string
+    if (groupMode === 'none' || !groupValue || parseInt(groupValue) <= 0) {
+      // No grouping - join all with comma and newline
+      text = objectIds.join(',\n')
+    } else {
+      const value = parseInt(groupValue)
+      let groupSize: number
+
+      if (groupMode === 'perGroup') {
+        // Fixed number of items per group
+        groupSize = value
+      } else {
+        // Split into N groups evenly
+        groupSize = Math.ceil(objectIds.length / value)
+      }
+
+      // Split into groups
+      const groups: string[][] = []
+      for (let i = 0; i < objectIds.length; i += groupSize) {
+        groups.push(objectIds.slice(i, i + groupSize))
+      }
+
+      // Format each group as an array and join groups with double newline
+      text = groups.map(group => `[\n${group.join(',\n')}\n]`).join('\n\n')
+    }
 
     try {
       await navigator.clipboard.writeText(text)
       setGasCopied(true)
-      toast.success('Copied!', `${filteredGasObjects.length} gas object IDs copied to clipboard`)
+      const groupInfo = groupMode !== 'none' && groupValue
+        ? ` (${groupMode === 'perGroup' ? `${groupValue} per group` : `${groupValue} groups`})`
+        : ''
+      toast.success('Copied!', `${filteredGasObjects.length} gas object IDs copied to clipboard${groupInfo}`)
       setTimeout(() => setGasCopied(false), 2000)
     } catch (err) {
       toast.error('Copy Failed', 'Failed to copy to clipboard')
@@ -561,6 +591,50 @@ export default function Coin() {
                 />
               </div>
             </div>
+
+            {/* Grouping Options */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Grouping Mode</label>
+                <select
+                  value={groupMode}
+                  onChange={(e) => setGroupMode(e.target.value as 'none' | 'perGroup' | 'totalGroups')}
+                  className="input w-full"
+                >
+                  <option value="none">No Grouping</option>
+                  <option value="perGroup">Items per Group</option>
+                  <option value="totalGroups">Split into N Groups</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">
+                  {groupMode === 'perGroup' ? 'Items per Group' : groupMode === 'totalGroups' ? 'Number of Groups' : 'Group Value'}
+                </label>
+                <input
+                  type="text"
+                  placeholder={groupMode === 'perGroup' ? 'e.g. 10' : groupMode === 'totalGroups' ? 'e.g. 5' : '-'}
+                  value={groupValue}
+                  onChange={(e) => setGroupValue(e.target.value.replace(/[^0-9]/g, ''))}
+                  disabled={groupMode === 'none'}
+                  className="input w-full disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            {/* Grouping Preview */}
+            {groupMode !== 'none' && groupValue && parseInt(groupValue) > 0 && filteredGasObjects.length > 0 && (
+              <div className="bg-slate-600 rounded-lg p-2 text-xs text-gray-300">
+                {groupMode === 'perGroup' ? (
+                  <span>
+                    Will create {Math.ceil(filteredGasObjects.length / parseInt(groupValue))} groups with up to {groupValue} items each
+                  </span>
+                ) : (
+                  <span>
+                    Will create {groupValue} groups with ~{Math.ceil(filteredGasObjects.length / parseInt(groupValue))} items each
+                  </span>
+                )}
+              </div>
+            )}
             <div className="bg-slate-700 rounded-lg p-3">
               <div className="flex justify-between text-sm text-gray-300 mb-2">
                 <span>Filtered Gas Objects:</span>
