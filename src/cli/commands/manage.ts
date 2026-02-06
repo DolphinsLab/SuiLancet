@@ -8,6 +8,7 @@ import {
   transferObjects,
   splitSuiCoins,
   splitSpecialCoin,
+  depositIntoVault,
   withdrawFromVault,
   firstAidPacket,
   executeMigration,
@@ -134,6 +135,25 @@ export function registerManageCommands(
     })
 
   // Vault sub-commands
+  manageCmd
+    .command("vault-deposit")
+    .description("Deposit coins into vault")
+    .requiredOption("-i, --coin-id <id>", "Coin object ID to deposit")
+    .requiredOption("-t, --coin-type <type>", "Coin type")
+    .requiredOption("-a, --amount <amount>", "Deposit amount", parseInt)
+    .option("--gas-object <id>", "Specify gas object ID")
+    .action(async (options) => {
+      const client = getClient()
+      const result = await depositIntoVault(
+        client,
+        options.coinId,
+        options.coinType,
+        options.amount,
+        { gasObject: options.gasObject }
+      )
+      console.log(result.message)
+    })
+
   manageCmd
     .command("vault-withdraw")
     .description("Withdraw coins from vault")
