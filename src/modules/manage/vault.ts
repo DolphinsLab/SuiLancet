@@ -5,16 +5,25 @@ import {
   first_aid_packet_movecall,
   withdraw_movecall,
 } from "../../movecall/vault"
-import { getObjectRef } from "../../common/object"
+import { validateGasCoin } from "../../common/object"
 import { CommandResult } from "../../core/types"
 
 export async function depositIntoVault(
   client: SuiScriptClient,
   coinObjectId: string,
   coinType: string,
-  amount: number
+  amount: number,
+  options: { gasObject?: string } = {}
 ): Promise<CommandResult> {
   const txb = new Transaction()
+
+  if (options.gasObject) {
+    const gasObjectRef = await validateGasCoin(client, options.gasObject, [
+      coinObjectId,
+    ])
+    txb.setGasPayment([gasObjectRef])
+  }
+
   deposit_movecall(txb, coinObjectId, coinType, amount)
   const txRes = await client.sendTransaction(txb)
   return {
@@ -34,7 +43,7 @@ export async function withdrawFromVault(
   const txb = new Transaction()
 
   if (options.gasObject) {
-    const gasObjectRef = await getObjectRef(client, options.gasObject)
+    const gasObjectRef = await validateGasCoin(client, options.gasObject)
     txb.setGasPayment([gasObjectRef])
   }
 
@@ -56,7 +65,11 @@ export async function firstAidPacket(
   const txb = new Transaction()
 
   if (options.gasObject) {
-    const gasObjectRef = await getObjectRef(client, options.gasObject)
+    const gasObjectRef = await validateGasCoin(
+      client,
+      options.gasObject,
+      coins
+    )
     txb.setGasPayment([gasObjectRef])
   }
 
