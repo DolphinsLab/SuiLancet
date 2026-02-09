@@ -3,6 +3,7 @@ import { SuiScriptClient } from "../../core"
 import { CoinObject, CommandResult } from "../../core/types"
 import { fetchTokenPrices, getCoinDecimals } from "../../common/price"
 import { destoryZeroCoin } from "../../movecall"
+import { getObjectRef } from "../../common/object"
 import { sleep } from "../../common"
 
 export interface DustCoin extends CoinObject {
@@ -19,6 +20,8 @@ export interface DustCleanerOptions {
   dryRun?: boolean
   /** Gas budget override */
   gasBudget?: number
+  /** Specify gas object ID for gas payment */
+  gasObject?: string
 }
 
 export interface DustCleanerResult {
@@ -137,6 +140,10 @@ export async function cleanDust(
 
     if (options.gasBudget) {
       tx.setGasBudget(options.gasBudget)
+    }
+    if (options.gasObject) {
+      const gasObjectRef = await getObjectRef(client, options.gasObject)
+      tx.setGasPayment([gasObjectRef])
     }
 
     for (const coin of batch) {

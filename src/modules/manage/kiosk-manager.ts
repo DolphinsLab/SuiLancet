@@ -1,5 +1,6 @@
 import { Transaction } from "@mysten/sui/transactions"
 import { SuiScriptClient } from "../../core"
+import { getObjectRef } from "../../common/object"
 import { CommandResult } from "../../core/types"
 
 const KIOSK_TYPE = "0x0000000000000000000000000000000000000000000000000000000000000002::kiosk::Kiosk"
@@ -161,9 +162,15 @@ export async function takeFromKiosk(
   kioskId: string,
   kioskCapId: string,
   itemId: string,
-  itemType: string
+  itemType: string,
+  options: { gasObject?: string } = {}
 ): Promise<CommandResult> {
   const tx = new Transaction()
+
+  if (options.gasObject) {
+    const gasObjectRef = await getObjectRef(client, options.gasObject)
+    tx.setGasPayment([gasObjectRef])
+  }
 
   const [item] = tx.moveCall({
     target: "0x2::kiosk::take",
@@ -187,9 +194,15 @@ export async function takeFromKiosk(
 export async function withdrawKioskProfits(
   client: SuiScriptClient,
   kioskId: string,
-  kioskCapId: string
+  kioskCapId: string,
+  options: { gasObject?: string } = {}
 ): Promise<CommandResult> {
   const tx = new Transaction()
+
+  if (options.gasObject) {
+    const gasObjectRef = await getObjectRef(client, options.gasObject)
+    tx.setGasPayment([gasObjectRef])
+  }
 
   const [coin] = tx.moveCall({
     target: "0x2::kiosk::withdraw",
