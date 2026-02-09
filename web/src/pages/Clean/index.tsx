@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit'
 import { Transaction } from '@mysten/sui/transactions'
 import type { CoinStruct } from '@mysten/sui/client'
@@ -7,6 +7,14 @@ import { useToast } from '../../components/Toast'
 type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransaction>['mutate']>[0]
 
 type CoinAction = 'merge' | 'split' | 'transfer' | 'destroy' | 'gas'
+
+interface GasGroup {
+  name: string
+  ids: string[]
+  createdAt: number
+}
+
+const GAS_GROUPS_STORAGE_KEY = 'sui-lancet-gas-groups'
 
 // Sui limits: 512 arguments per MoveCall, 131072 bytes max tx size
 const MAX_ARGS_PER_CALL = 511  // 512 - 1 (for primary coin)
@@ -39,7 +47,35 @@ export default function Coin() {
   const [isLoading, setIsLoading] = useState(false)
   const [hasMore, setHasMore] = useState(false)
 
+  // Gas group state
+  const [gasGroups, setGasGroups] = useState<GasGroup[]>([])
+  const [newGroupName, setNewGroupName] = useState('')
+  const [manualGasIds, setManualGasIds] = useState('')
+  const [showManualInput, setShowManualInput] = useState(false)
+  const [copiedGroupIndex, setCopiedGroupIndex] = useState<number | null>(null)
+
   const { mutate: signAndExecute, isPending } = useSignAndExecuteTransaction()
+
+  // Load gas groups from localStorage
+  const loadGasGroups = useCallback(() => {
+    try {
+      const stored = localStorage.getItem(GAS_GROUPS_STORAGE_KEY)
+      if (stored) {
+        setGasGroups(JSON.parse(stored))
+      }
+    } catch {
+      console.error('Failed to load gas groups from localStorage')
+    }
+  }, [])
+
+  const saveGasGroupsToStorage = useCallback((groups: GasGroup[]) => {
+    setGasGroups(groups)
+    localStorage.setItem(GAS_GROUPS_STORAGE_KEY, JSON.stringify(groups))
+  }, [])
+
+  useEffect(() => {
+    loadGasGroups()
+  }, [])
 
   // Fetch coins with pagination (max 2048)
   const fetchAllCoins = async () => {
@@ -361,6 +397,98 @@ export default function Coin() {
     }
   }
 
+  // Save filtered gas objects as a named group
+  const handleSaveFilteredAsGroup = () => {
+    const name = newGroupName.trim()
+    if (!name) {
+      toast.warning('Name Required', 'Please enter a group name')
+      return
+    }
+    if (filteredGasObjects.length === 0) {
+      toast.warning('No Objects', 'No gas objects to save')
+      return
+    }
+    const ids = filteredGasObjects.map(c => c.coinObjectId)
+    const group: GasGroup = { name, ids, createdAt: Date.now() }
+    saveGasGroupsToStorage([...gasGroups, group])
+    setNewGroupName('')
+    toast.success('Group Saved', `"${name}" saved with ${ids.length} gas objects`)
+  }
+
+  // Save manually input gas IDs as a named group
+  const handleSaveManualGroup = () => {
+    const name = newGroupName.trim()
+    if (!name) {
+      toast.warning('Name Required', 'Please enter a group name')
+      return
+    }
+    const raw = manualGasIds.trim()
+    if (!raw) {
+      toast.warning('No IDs', 'Please enter gas object IDs')
+      return
+    }
+
+    // Parse IDs: support JSON array, comma-separated, or newline-separated
+    let ids: string[] = []
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        ids = parsed.map((id: string) => id.trim()).filter(Boolean)
+      } else {
+        throw new Error('Not an array')
+      }
+    } catch {
+      // Fall back to comma or newline separated
+      ids = raw
+        .split(/[,\n]+/)
+        .map(id => id.trim().replace(/^["']|["']$/g, ''))
+        .filter(Boolean)
+    }
+
+    if (ids.length === 0) {
+      toast.warning('No Valid IDs', 'Could not parse any gas object IDs')
+      return
+    }
+
+    // Basic validation: all IDs should start with 0x
+    const invalidIds = ids.filter(id => !id.startsWith('0x'))
+    if (invalidIds.length > 0) {
+      toast.warning('Invalid IDs', `${invalidIds.length} IDs don't start with 0x, please check input`)
+      return
+    }
+
+    const group: GasGroup = { name, ids, createdAt: Date.now() }
+    saveGasGroupsToStorage([...gasGroups, group])
+    setNewGroupName('')
+    setManualGasIds('')
+    setShowManualInput(false)
+    toast.success('Group Saved', `"${name}" saved with ${ids.length} gas objects`)
+  }
+
+  // Copy a saved group's IDs as JSON
+  const handleCopyGroup = async (index: number) => {
+    const group = gasGroups[index]
+    if (!group) return
+
+    const json = JSON.stringify(group.ids, null, 2)
+    try {
+      await navigator.clipboard.writeText(json)
+      setCopiedGroupIndex(index)
+      toast.success('Copied!', `${group.ids.length} IDs from "${group.name}" copied as JSON`)
+      setTimeout(() => setCopiedGroupIndex(null), 2000)
+    } catch {
+      toast.error('Copy Failed', 'Failed to copy to clipboard')
+    }
+  }
+
+  // Delete a saved group
+  const handleDeleteGroup = (index: number) => {
+    const group = gasGroups[index]
+    const updated = gasGroups.filter((_, i) => i !== index)
+    saveGasGroupsToStorage(updated)
+    toast.info('Group Deleted', `"${group.name}" has been removed`)
+  }
+
   // Group coins by type
   const coinsByType = coins.reduce((acc, coin) => {
     if (!acc[coin.coinType]) {
@@ -647,13 +775,120 @@ export default function Coin() {
                 </span>
               </div>
             </div>
-            <button
-              onClick={handleCopyGasObjects}
-              disabled={filteredGasObjects.length === 0}
-              className={`btn-primary w-full disabled:opacity-50 ${gasCopied ? 'bg-green-600 hover:bg-green-700' : ''}`}
-            >
-              {gasCopied ? 'Copied!' : `Copy ${filteredGasObjects.length} Gas Object IDs`}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCopyGasObjects}
+                disabled={filteredGasObjects.length === 0}
+                className={`btn-primary flex-1 disabled:opacity-50 ${gasCopied ? 'bg-green-600 hover:bg-green-700' : ''}`}
+              >
+                {gasCopied ? 'Copied!' : `Copy ${filteredGasObjects.length} Gas Object IDs`}
+              </button>
+            </div>
+
+            {/* Save Filtered as Group */}
+            {filteredGasObjects.length > 0 && (
+              <div className="bg-slate-700 rounded-lg p-3 space-y-2">
+                <label className="block text-gray-400 text-sm">Save filtered results as group</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Group name..."
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    className="input flex-1"
+                  />
+                  <button
+                    onClick={handleSaveFilteredAsGroup}
+                    disabled={!newGroupName.trim()}
+                    className="px-4 py-2 bg-sui-600 text-white rounded-lg hover:bg-sui-700 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    Save Group
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Manual Gas ID Input */}
+            <div className="border-t border-slate-600 pt-4">
+              <button
+                onClick={() => setShowManualInput(!showManualInput)}
+                className="text-sm text-sui-400 hover:text-sui-300 flex items-center gap-1"
+              >
+                <span>{showManualInput ? '-' : '+'}</span>
+                <span>Manual Input Gas Object IDs</span>
+              </button>
+              {showManualInput && (
+                <div className="mt-3 space-y-2">
+                  <textarea
+                    placeholder={'Paste gas object IDs here.\nSupports JSON array, comma-separated, or one per line.\n\nExample:\n["0xabc...", "0xdef..."]\nor\n0xabc..., 0xdef...\nor\n0xabc...\n0xdef...'}
+                    value={manualGasIds}
+                    onChange={(e) => setManualGasIds(e.target.value)}
+                    rows={6}
+                    className="input w-full font-mono text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Group name..."
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      className="input flex-1"
+                    />
+                    <button
+                      onClick={handleSaveManualGroup}
+                      disabled={!newGroupName.trim() || !manualGasIds.trim()}
+                      className="px-4 py-2 bg-sui-600 text-white rounded-lg hover:bg-sui-700 disabled:opacity-50 whitespace-nowrap"
+                    >
+                      Save Group
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Saved Gas Groups */}
+            {gasGroups.length > 0 && (
+              <div className="border-t border-slate-600 pt-4">
+                <h3 className="text-sm font-semibold text-gray-300 mb-3">Saved Groups ({gasGroups.length})</h3>
+                <div className="space-y-2">
+                  {gasGroups.map((group, index) => (
+                    <div
+                      key={`${group.name}-${group.createdAt}`}
+                      className="bg-slate-700 rounded-lg p-3"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-white font-medium text-sm">{group.name}</span>
+                          <span className="text-gray-400 text-xs ml-2">({group.ids.length} objects)</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleCopyGroup(index)}
+                            className={`px-3 py-1 text-xs rounded-lg ${
+                              copiedGroupIndex === index
+                                ? 'bg-green-600 text-white'
+                                : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
+                            }`}
+                          >
+                            {copiedGroupIndex === index ? 'Copied!' : 'Copy JSON'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteGroup(index)}
+                            className="px-3 py-1 text-xs rounded-lg bg-slate-600 text-red-400 hover:bg-red-600 hover:text-white"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-400 font-mono truncate">
+                        {group.ids.slice(0, 3).map(id => `${id.slice(0, 10)}...`).join(', ')}
+                        {group.ids.length > 3 && ` +${group.ids.length - 3} more`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Gas Objects List */}
             {filteredGasObjects.length > 0 && (
