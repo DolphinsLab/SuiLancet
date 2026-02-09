@@ -1,6 +1,7 @@
 import { Transaction } from "@mysten/sui/transactions"
 import { SuiScriptClient } from "../../core"
 import { CoinObject, CommandResult } from "../../core/types"
+import { getObjectRef } from "../../common/object"
 import { sleep } from "../../common"
 
 const SUI_TYPE =
@@ -38,6 +39,8 @@ export interface MigrateOptions {
   dryRun?: boolean
   /** Coin types to exclude from migration */
   excludeTypes?: string[]
+  /** Specify gas object ID for gas payment */
+  gasObject?: string
 }
 
 /**
@@ -226,6 +229,12 @@ export async function executeMigration(
     for (let i = 0; i < nonSuiCoins.length; i += batchSize) {
       const batch = nonSuiCoins.slice(i, i + batchSize)
       const tx = new Transaction()
+
+      if (options.gasObject) {
+        const gasObjectRef = await getObjectRef(client, options.gasObject)
+        tx.setGasPayment([gasObjectRef])
+      }
+
       const refs = batch.map((c) => tx.object(c.objectId))
       tx.transferObjects(refs, recipient)
 
@@ -250,6 +259,12 @@ export async function executeMigration(
     for (let i = 0; i < migrationObjects.length; i += batchSize) {
       const batch = migrationObjects.slice(i, i + batchSize)
       const tx = new Transaction()
+
+      if (options.gasObject) {
+        const gasObjectRef = await getObjectRef(client, options.gasObject)
+        tx.setGasPayment([gasObjectRef])
+      }
+
       const refs = batch.map((o) => tx.object(o.objectId))
       tx.transferObjects(refs, recipient)
 
@@ -272,6 +287,12 @@ export async function executeMigration(
   if (suiCoins.length > 0) {
     console.log(`\nPhase 3: Migrating SUI...`)
     const tx = new Transaction()
+
+    if (options.gasObject) {
+      const gasObjectRef = await getObjectRef(client, options.gasObject)
+      tx.setGasPayment([gasObjectRef])
+    }
+
     // Merge all SUI coins into gas, then transfer gas
     if (suiCoins.length > 1) {
       const otherSui = suiCoins.slice(1).map((c) => tx.object(c.objectId))

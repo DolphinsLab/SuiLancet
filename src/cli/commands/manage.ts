@@ -33,9 +33,12 @@ export function registerManageCommands(
     .description("Transfer a coin by object ID")
     .requiredOption("-i, --coin-id <id>", "Coin object ID")
     .requiredOption("-r, --recipient <address>", "Recipient address")
+    .option("--gas-object <id>", "Specify gas object ID")
     .action(async (options) => {
       const client = getClient()
-      const result = await transferCoin(client, options.coinId, options.recipient)
+      const result = await transferCoin(client, options.coinId, options.recipient, {
+        gasObject: options.gasObject,
+      })
       console.log(result.message)
     })
 
@@ -45,13 +48,15 @@ export function registerManageCommands(
     .requiredOption("-t, --coin-type <type>", "Coin type")
     .requiredOption("-r, --recipient <address>", "Recipient address")
     .requiredOption("-a, --amount <amount>", "Transfer amount", parseInt)
+    .option("--gas-object <id>", "Specify gas object ID")
     .action(async (options) => {
       const client = getClient()
       const result = await transferCoinByType(
         client,
         options.coinType,
         options.recipient,
-        options.amount
+        options.amount,
+        { gasObject: options.gasObject }
       )
       console.log(result.message)
     })
@@ -60,9 +65,12 @@ export function registerManageCommands(
     .command("transfer-all-sui")
     .description("Transfer all SUI to recipient")
     .requiredOption("-r, --recipient <address>", "Recipient address")
+    .option("--gas-object <id>", "Specify gas object ID")
     .action(async (options) => {
       const client = getClient()
-      const result = await transferAllSui(client, options.recipient)
+      const result = await transferAllSui(client, options.recipient, {
+        gasObject: options.gasObject,
+      })
       console.log(result.message)
     })
 
@@ -72,13 +80,15 @@ export function registerManageCommands(
     .requiredOption("-r, --recipient <address>", "Recipient address")
     .requiredOption("-t, --coin-type <type>", "Coin type")
     .requiredOption("-a, --amount <amount>", "Number of coins to transfer", parseInt)
+    .option("--gas-object <id>", "Specify gas object ID")
     .action(async (options) => {
       const client = getClient()
       const result = await batchTransferCoin(
         client,
         options.recipient,
         options.coinType,
-        options.amount
+        options.amount,
+        { gasObject: options.gasObject }
       )
       console.log(result.message)
     })
@@ -92,9 +102,12 @@ export function registerManageCommands(
       (value: string) => value.split(",")
     )
     .requiredOption("-r, --recipient <address>", "Recipient address")
+    .option("--gas-object <id>", "Specify gas object ID")
     .action(async (options) => {
       const client = getClient()
-      const result = await transferObjects(client, options.objects, options.recipient)
+      const result = await transferObjects(client, options.objects, options.recipient, {
+        gasObject: options.gasObject,
+      })
       console.log(result.message)
     })
 
@@ -199,6 +212,7 @@ export function registerManageCommands(
     .option("--batch-size <size>", "Objects per batch", parseInt)
     .option("--exclude <types>", "Coin types to exclude, comma separated",
       (value: string) => value.split(","))
+    .option("--gas-object <id>", "Specify gas object ID")
     .option("--dry-run", "Preview migration plan only")
     .action(async (options) => {
       const client = getClient()
@@ -215,6 +229,7 @@ export function registerManageCommands(
             type: options.type,
             batchSize: options.batchSize,
             excludeTypes: options.exclude,
+            gasObject: options.gasObject,
           })
       console.log(result.message)
     })
@@ -246,6 +261,7 @@ export function registerManageCommands(
     .requiredOption("-c, --cap-id <id>", "KioskOwnerCap object ID")
     .requiredOption("-i, --item-id <id>", "Item object ID to extract")
     .requiredOption("-t, --item-type <type>", "Item type (full Move type)")
+    .option("--gas-object <id>", "Specify gas object ID")
     .action(async (options) => {
       const client = getClient()
       const result = await takeFromKiosk(
@@ -253,7 +269,8 @@ export function registerManageCommands(
         options.kioskId,
         options.capId,
         options.itemId,
-        options.itemType
+        options.itemType,
+        { gasObject: options.gasObject }
       )
       console.log(result.message)
     })
@@ -263,12 +280,14 @@ export function registerManageCommands(
     .description("Withdraw SUI profits from Kiosk")
     .requiredOption("-k, --kiosk-id <id>", "Kiosk object ID")
     .requiredOption("-c, --cap-id <id>", "KioskOwnerCap object ID")
+    .option("--gas-object <id>", "Specify gas object ID")
     .action(async (options) => {
       const client = getClient()
       const result = await withdrawKioskProfits(
         client,
         options.kioskId,
-        options.capId
+        options.capId,
+        { gasObject: options.gasObject }
       )
       console.log(result.message)
     })

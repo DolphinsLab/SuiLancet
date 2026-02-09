@@ -54,6 +54,7 @@ export function registerCleanCommands(
     .option("--threshold <usd>", "USD value threshold (default: 0.01)", parseFloat)
     .option("--include-unknown", "Include coins without price data")
     .option("-g, --gas-budget <amount>", "Set gas budget", parseInt)
+    .option("--gas-object <id>", "Specify gas object ID")
     .option("--dry-run", "Preview only, do not execute")
     .action(async (options) => {
       const client = getClient()
@@ -61,6 +62,7 @@ export function registerCleanCommands(
         threshold: options.threshold,
         includeUnknown: options.includeUnknown,
         gasBudget: options.gasBudget,
+        gasObject: options.gasObject,
         dryRun: options.dryRun,
       })
       console.log(result.message)
@@ -79,11 +81,13 @@ export function registerCleanCommands(
     .command("airdrop-destroy")
     .description("Destroy suspicious airdrop tokens")
     .option("--risk <level>", "Minimum risk level to destroy (high, medium)", "high")
+    .option("--gas-object <id>", "Specify gas object ID")
     .option("--dry-run", "Preview only, do not execute")
     .action(async (options) => {
       const client = getClient()
       const result = await destroyAirdrops(client, {
         riskLevel: options.risk as RiskLevel,
+        gasObject: options.gasObject,
         dryRun: options.dryRun,
       })
       console.log(result.message)

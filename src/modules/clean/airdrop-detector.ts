@@ -3,6 +3,7 @@ import { SuiScriptClient } from "../../core"
 import { CoinObject, CommandResult } from "../../core/types"
 import { getCoinDecimals } from "../../common/price"
 import { destoryZeroCoin } from "../../movecall"
+import { getObjectRef } from "../../common/object"
 import { sleep } from "../../common"
 
 export type RiskLevel = "high" | "medium" | "low"
@@ -191,6 +192,7 @@ export async function destroyAirdrops(
   options: {
     riskLevel?: RiskLevel
     dryRun?: boolean
+    gasObject?: string
   } = {}
 ): Promise<CommandResult> {
   const minRisk = options.riskLevel ?? "high"
@@ -245,6 +247,11 @@ export async function destroyAirdrops(
   for (let i = 0; i < zeroBalance.length; i += batchSize) {
     const batch = zeroBalance.slice(i, i + batchSize)
     const tx = new Transaction()
+
+    if (options.gasObject) {
+      const gasObjectRef = await getObjectRef(client, options.gasObject)
+      tx.setGasPayment([gasObjectRef])
+    }
 
     for (const token of batch) {
       destoryZeroCoin(tx, token.objectId, token.coinType)
