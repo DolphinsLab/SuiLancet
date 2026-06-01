@@ -1,31 +1,23 @@
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import {
-  useCurrentAccount,
-  useCurrentWallet,
-  useSignPersonalMessage,
-  useSuiClientContext,
-} from '@mysten/dapp-kit'
+import { createSuiAdapter, type SuiNetwork } from '@dolphin-id/adapter-sui'
+import { DolphinProvider, useDolphin, useSession, type DolphinRefreshTokenSnapshot } from '@dolphin-id/react'
+import type { SessionSnapshot, Wallet } from '@dolphin-id/core'
+import { useCurrentAccount, useCurrentWallet, useSuiClientContext } from '@mysten/dapp-kit'
 import {
   DolphinIdConfig,
-  DolphinIdRefreshToken,
-  DolphinIdSession,
-  createDolphinIdSuiMessage,
   fetchDolphinIdSession,
   getDolphinIdConfig,
-  issueDolphinIdNonce,
-  logoutDolphinId,
-  verifyDolphinIdSignIn,
 } from '../lib/dolphin-id'
 
-type DolphinIdStatus = 'idle' | 'restoring' | 'signing' | 'signed-in' | 'error'
+type DolphinIdStatus = 'idle' | 'restoring' | 'connecting' | 'signing' | 'signed-in' | 'error'
 
 interface DolphinIdContextValue {
   config: DolphinIdConfig
-  session: DolphinIdSession | null
-  refreshToken: DolphinIdRefreshToken | null
+  session: SessionSnapshot | null
+  refreshToken: DolphinRefreshTokenSnapshot | null
   status: DolphinIdStatus
   error: string | null
-  signIn: () => Promise<DolphinIdSession>
+  signIn: () => Promise<SessionSnapshot>
   logout: () => Promise<void>
   restore: () => Promise<void>
 }
@@ -33,26 +25,64 @@ interface DolphinIdContextValue {
 const DolphinIdContext = createContext<DolphinIdContextValue | null>(null)
 
 export function DolphinIdProvider({ children }: { children: ReactNode }) {
+  const { network } = useSuiClientContext()
+  const config = useMemo(() => getDolphinIdConfig(), [])
+  const adapters = useMemo(
+    () => [createSuiAdapter({ network: toDolphinSuiNetwork(network) })],
+    [network]
+  )
+
+  return (
+    <DolphinProvider
+      config={{
+        adapters,
+        auth: {
+          nonceUrl: config.nonceUrl,
+          verifyUrl: config.verifyUrl,
+          refreshUrl: config.refreshUrl,
+          logoutUrl: config.logoutUrl,
+          credentials: config.credentials,
+        },
+      }}
+    >
+      <DolphinIdSessionBridge config={config}>{children}</DolphinIdSessionBridge>
+    </DolphinProvider>
+  )
+}
+
+function DolphinIdSessionBridge({
+  children,
+  config,
+}: {
+  children: ReactNode
+  config: DolphinIdConfig
+}) {
   const account = useCurrentAccount()
   const { currentWallet } = useCurrentWallet()
-  const { network } = useSuiClientContext()
-  const { mutateAsync: signPersonalMessage } = useSignPersonalMessage()
-  const config = useMemo(() => getDolphinIdConfig(), [])
-  const [session, setSession] = useState<DolphinIdSession | null>(null)
-  const [refreshToken, setRefreshToken] = useState<DolphinIdRefreshToken | null>(null)
+  const dolphin = useDolphin()
+  const dolphinSession = useSession()
+  const [restoredSession, setRestoredSession] = useState<SessionSnapshot | null>(null)
   const [status, setStatus] = useState<DolphinIdStatus>('idle')
   const [error, setError] = useState<string | null>(null)
+
+  const session = dolphinSession.session ?? restoredSession
+  const refreshToken = dolphinSession.refreshToken ?? null
+  const derivedStatus = session
+    ? 'signed-in'
+    : status === 'idle' && dolphin.state.status === 'connected'
+    ? 'idle'
+    : status
 
   const restore = useCallback(async () => {
     setStatus('restoring')
     setError(null)
 
     try {
-      const restoredSession = await fetchDolphinIdSession(config)
-      setSession(restoredSession)
-      setStatus(restoredSession ? 'signed-in' : 'idle')
+      const nextSession = await fetchDolphinIdSession(config)
+      setRestoredSession(nextSession)
+      setStatus(nextSession ? 'signed-in' : 'idle')
     } catch (err) {
-      setSession(null)
+      setRestoredSession(null)
       setStatus('error')
       setError(err instanceof Error ? err.message : 'Failed to restore Dolphin ID session.')
     }
@@ -64,8 +94,7 @@ export function DolphinIdProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (session && account && !session.subject.toLowerCase().includes(account.address.toLowerCase())) {
-      setSession(null)
-      setRefreshToken(null)
+      setRestoredSession(null)
       setStatus('idle')
     }
   }, [account, session])
@@ -75,71 +104,68 @@ export function DolphinIdProvider({ children }: { children: ReactNode }) {
       throw new Error('Connect a Sui wallet before signing in with Dolphin ID.')
     }
 
-    setStatus('signing')
+    setStatus('connecting')
     setError(null)
 
     try {
-      const nonce = await issueDolphinIdNonce(config, {
-        address: account.address,
-        chainId: network,
-        walletName: currentWallet?.name ?? 'Sui Wallet',
-      })
-      const message = createDolphinIdSuiMessage({
-        address: account.address,
-        chainId: network,
-        nonce: nonce.nonce,
+      const wallets = dolphin.wallets.length > 0 ? dolphin.wallets : await dolphin.refreshWallets()
+      const wallet = selectWallet(wallets, currentWallet?.name)
+
+      if (!wallet) {
+        throw new Error('No Sui wallet is available for Dolphin ID.')
+      }
+
+      if (dolphin.state.status !== 'connected' || dolphin.activeWallet?.id !== wallet.id) {
+        await dolphin.connectWallet({
+          walletId: wallet.id,
+          adapterId: wallet.adapterId,
+        })
+      }
+
+      setStatus('signing')
+      const result = await dolphin.signIn({
         domain: config.domain,
         uri: config.uri,
         statement: config.statement,
       })
-      const signed = await signPersonalMessage({
-        message: new TextEncoder().encode(message.raw),
-      })
-      const response = await verifyDolphinIdSignIn(config, {
-        nonce: nonce.nonce,
-        message,
-        signature: signed.signature,
-      })
 
-      setSession(response.session)
-      setRefreshToken(response.refreshToken ?? null)
+      setRestoredSession(null)
       setStatus('signed-in')
-      return response.session
+      return result.session
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Dolphin ID sign-in failed.'
-      setSession(null)
+      setRestoredSession(null)
       setStatus('error')
       setError(message)
       throw new Error(message)
     }
-  }, [account, config, currentWallet, network, signPersonalMessage])
+  }, [account, config, currentWallet, dolphin])
 
   const logout = useCallback(async () => {
     setError(null)
 
     try {
-      await logoutDolphinId(config, refreshToken?.token)
+      await dolphinSession.logoutSession({ refreshToken: refreshToken?.token })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Dolphin ID logout request failed.')
     } finally {
-      setSession(null)
-      setRefreshToken(null)
+      setRestoredSession(null)
       setStatus('idle')
     }
-  }, [config, refreshToken])
+  }, [dolphinSession, refreshToken])
 
   const value = useMemo<DolphinIdContextValue>(
     () => ({
       config,
-      session,
+      session: session ?? null,
       refreshToken,
-      status,
+      status: derivedStatus,
       error,
       signIn,
       logout,
       restore,
     }),
-    [config, error, logout, refreshToken, restore, session, signIn, status]
+    [config, derivedStatus, error, logout, refreshToken, restore, session, signIn]
   )
 
   return <DolphinIdContext.Provider value={value}>{children}</DolphinIdContext.Provider>
@@ -153,4 +179,28 @@ export function useDolphinId() {
   }
 
   return context
+}
+
+function toDolphinSuiNetwork(network: string): SuiNetwork {
+  if (network === 'testnet' || network === 'devnet' || network === 'localnet') {
+    return network
+  }
+
+  return 'mainnet'
+}
+
+function selectWallet(wallets: readonly Wallet[], preferredName?: string): Wallet | undefined {
+  const installedWallets = wallets.filter((wallet) => wallet.installed)
+
+  if (preferredName) {
+    const preferred = installedWallets.find(
+      (wallet) => wallet.name.toLowerCase() === preferredName.toLowerCase()
+    )
+
+    if (preferred) {
+      return preferred
+    }
+  }
+
+  return installedWallets[0] ?? wallets[0]
 }

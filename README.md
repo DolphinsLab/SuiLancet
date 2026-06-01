@@ -118,6 +118,7 @@ Optional Dolphin ID endpoints can be configured in `web/.env`:
 ```bash
 VITE_DOLPHIN_ID_NONCE_URL=/auth/nonce
 VITE_DOLPHIN_ID_VERIFY_URL=/auth/verify
+VITE_DOLPHIN_ID_REFRESH_URL=/auth/refresh
 VITE_DOLPHIN_ID_ME_URL=/auth/me
 VITE_DOLPHIN_ID_LOGOUT_URL=/auth/logout
 ```
