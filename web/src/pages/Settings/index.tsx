@@ -1,11 +1,30 @@
 import { useState } from 'react'
-import { useSuiClientContext } from '@mysten/dapp-kit'
+import { useCurrentAccount, useSuiClientContext } from '@mysten/dapp-kit'
+import { useDolphinId } from '../../components/DolphinIdProvider'
+import { useToast } from '../../components/Toast'
 
 type Network = 'mainnet' | 'testnet' | 'devnet'
 
 export default function Settings() {
   const { selectNetwork, network } = useSuiClientContext()
+  const account = useCurrentAccount()
+  const dolphinId = useDolphinId()
+  const toast = useToast()
   const [rpcEndpoint, setRpcEndpoint] = useState('')
+
+  const handleDolphinSignIn = async () => {
+    try {
+      await dolphinId.signIn()
+      toast.success('Dolphin ID Connected')
+    } catch (err: any) {
+      toast.error('Dolphin ID Failed', err.message)
+    }
+  }
+
+  const handleDolphinLogout = async () => {
+    await dolphinId.logout()
+    toast.info('Dolphin ID', 'Signed out')
+  }
 
   return (
     <div className="space-y-6">
@@ -55,6 +74,73 @@ export default function Settings() {
         <p className="text-gray-400 text-sm mt-4">
           * Custom RPC support coming soon
         </p>
+      </div>
+
+      {/* Dolphin ID */}
+      <div className="card">
+        <h2 className="text-lg font-semibold text-white mb-4">Dolphin ID</h2>
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-between gap-6">
+            <span className="text-gray-400">Status</span>
+            <span className="text-white capitalize">{dolphinId.session ? 'signed in' : dolphinId.status}</span>
+          </div>
+          <div className="flex justify-between gap-6">
+            <span className="text-gray-400">Domain</span>
+            <span className="text-white font-mono break-all text-right">{dolphinId.config.domain}</span>
+          </div>
+          <div className="flex justify-between gap-6">
+            <span className="text-gray-400">Nonce Endpoint</span>
+            <span className="text-white font-mono break-all text-right">{dolphinId.config.nonceUrl}</span>
+          </div>
+          <div className="flex justify-between gap-6">
+            <span className="text-gray-400">Verify Endpoint</span>
+            <span className="text-white font-mono break-all text-right">{dolphinId.config.verifyUrl}</span>
+          </div>
+          {dolphinId.session && (
+            <>
+              <div className="flex justify-between gap-6">
+                <span className="text-gray-400">Subject</span>
+                <span className="text-sui-400 font-mono break-all text-right">{dolphinId.session.subject}</span>
+              </div>
+              <div className="flex justify-between gap-6">
+                <span className="text-gray-400">Expires</span>
+                <span className="text-white">{new Date(dolphinId.session.expiresAt).toLocaleString()}</span>
+              </div>
+            </>
+          )}
+          {dolphinId.error && (
+            <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 text-red-300">
+              {dolphinId.error}
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2 mt-4">
+          {dolphinId.session ? (
+            <button
+              type="button"
+              onClick={handleDolphinLogout}
+              className="btn-secondary"
+            >
+              Sign Out
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleDolphinSignIn}
+              disabled={!account || dolphinId.status === 'signing'}
+              className="btn-primary disabled:opacity-50"
+            >
+              {dolphinId.status === 'signing' ? 'Signing...' : 'Sign In'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => void dolphinId.restore()}
+            className="btn-secondary"
+          >
+            Refresh Session
+          </button>
+        </div>
       </div>
 
       {/* About */}
