@@ -5,6 +5,7 @@ import { SuiClientProvider, WalletProvider } from '@mysten/dapp-kit'
 import { getFullnodeUrl } from '@mysten/sui/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { DolphinIdProvider } from './components/DolphinIdProvider'
 import '@mysten/dapp-kit/dist/index.css'
 import './index.css'
 
@@ -24,9 +25,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networks} defaultNetwork={defaultNetwork}>
         <WalletProvider autoConnect>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <DolphinIdProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </DolphinIdProvider>
         </WalletProvider>
       </SuiClientProvider>
     </QueryClientProvider>
