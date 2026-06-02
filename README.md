@@ -99,6 +99,7 @@ cetus-cli query balance              # Query balances
 The web interface provides a visual dashboard for:
 
 - Wallet connection (Sui Wallet, Suiet, etc.)
+- Dolphin ID sign-in via Sui personal-message auth endpoints
 - Coin management (merge, split, transfer)
 - Transaction simulation and signing
 - DEX swap operations
@@ -110,6 +111,15 @@ The web interface provides a visual dashboard for:
 cd web
 npm install
 npm run dev
+```
+
+Optional Dolphin ID endpoints can be configured in `web/.env`:
+
+```bash
+VITE_DOLPHIN_ID_NONCE_URL=/auth/nonce
+VITE_DOLPHIN_ID_VERIFY_URL=/auth/verify
+VITE_DOLPHIN_ID_ME_URL=/auth/me
+VITE_DOLPHIN_ID_LOGOUT_URL=/auth/logout
 ```
 
 ### Deployment
