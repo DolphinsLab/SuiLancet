@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dolphin-id/adapter-sui": "^1.0.0",
+    "@dolphin-id/core": "^1.0.0",
+    "@dolphin-id/react": "^1.0.0",
     "@mysten/dapp-kit": "^0.14.0",
     "@mysten/sui": "^1.6.0",
     "@radix-ui/react-dialog": "^1.0.5",
