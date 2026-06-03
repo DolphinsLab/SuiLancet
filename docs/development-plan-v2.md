@@ -1,7 +1,7 @@
 # SuiLancet v2 - Development Plan
 
 > **Version**: 2.0
-> **Last Updated**: 2026-01-23
+> **Last Updated**: 2026-06-03
 > **Reference**: [PRD-v2.md](./PRD-v2.md)
 
 ---
@@ -9,6 +9,31 @@
 ## Overview
 
 本文档将 PRD v2 的功能需求拆解为具体的开发计划，分为 4 个 Phase 执行。
+
+## Current Status
+
+GitHub issue `#29` 的 v2 重构验收项已经实现。当前代码库已经具备：
+
+- `src/modules/clean`: `batchDestroyZeroCoin`, `mergeCoins`, `cleanDust`, `scanAirdrops`, `destroyAirdrops`
+- `src/modules/manage`: transfer, split, vault, wallet migration, and Kiosk operations
+- `src/modules/secure`: transaction simulation, wallet security scan, gas info, and gas estimation
+- `src/modules/query`: asset overview, transaction parsing/history, object inspection, and dynamic field listing
+- `web`: v2 toolkit UI routes plus wallet connection and Dolphin ID sign-in
+
+Hardening status as of 2026-06-03:
+
+- [x] Root SDK/CLI build passes
+- [x] Web production build passes
+- [x] Root Jest test infrastructure is present
+- [x] Baseline smoke tests cover common utilities and module exports
+- [x] Root npm audit reports 0 vulnerabilities
+
+Recommended follow-up work:
+
+- [ ] Expand unit tests for transaction-building modules with mocked Sui clients
+- [ ] Add CLI command parsing tests
+- [ ] Add testnet integration tests for high-risk flows
+- [ ] Decide whether `web/dist` should remain tracked or move to generated deployment output only
 
 ---
 

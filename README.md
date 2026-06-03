@@ -6,9 +6,11 @@ A lightweight personal tool for managing multiple Sui wallets and backend servic
 
 - **Multi-Wallet Management**: Manage multiple Sui wallets from a single interface
 - **Coin Operations**: Merge, split, transfer, and destroy coins
-- **DEX Integration**: Cetus Protocol, DeepBook V3 swap support
-- **Transaction Tools**: Simulate and sign Base64-encoded transactions
-- **Vault Management**: Deposit and withdraw from vaults
+- **Cleanup Tools**: Destroy zero-balance coins, clean dust, and scan suspicious airdrops
+- **Asset Management**: Transfer assets, split coins, migrate wallets, and manage Kiosk items
+- **Security Tools**: Simulate transactions, scan wallet risks, and inspect gas recommendations
+- **Query Tools**: Review balances, transaction history, object details, and dynamic fields
+- **Dolphin ID Sign-In**: Authenticate through Dolphin ID from the Web UI
 - **CLI & Web UI**: Both command-line and web interface available
 
 ## Quick Start
@@ -61,13 +63,12 @@ cd web && npm install && npm run dev
 
 ```
 SuiLancet/
-├── src/                    # SDK source code
-│   ├── client.ts          # Core client class
-│   ├── cli.ts             # CLI tool
+├── src/                    # SDK and CLI source
+│   ├── core/              # Core client and shared types
+│   ├── modules/           # Clean, Manage, Secure, Query, DeFi modules
+│   ├── cli/               # Commander CLI entrypoint and commands
 │   ├── common/            # Utility functions
-│   ├── methods/           # High-level business methods
-│   ├── movecall/          # Move contract call wrappers
-│   └── types/             # Type definitions
+│   └── movecall/          # Move call wrappers
 ├── tests/                  # Test files
 ├── docs/                   # Documentation
 └── web/                    # Web UI (React + Vite)
@@ -81,17 +82,26 @@ SuiLancet/
 ## CLI Commands
 
 ```bash
-# Coin operations
-cetus-cli coin destroy-zero          # Destroy zero-balance coins
-cetus-cli coin merge -t <coinType>   # Merge coins
-cetus-cli coin transfer -i <id> -r <recipient>  # Transfer coin
+# Cleanup operations
+sui-lancet clean destroy-zero --dry-run
+sui-lancet clean merge -t <coinType>
+sui-lancet clean dust --threshold 0.01 --dry-run
+sui-lancet clean airdrop-scan
 
-# Vault operations
-cetus-cli vault withdraw -t <coinType> -a <amount>
+# Asset management
+sui-lancet manage transfer -i <coinId> -r <recipient>
+sui-lancet manage migrate -r <recipient> --dry-run
+sui-lancet manage kiosk-list
+
+# Security operations
+sui-lancet secure simulate --tx <base64Tx>
+sui-lancet secure scan
+sui-lancet secure gas-info
 
 # Query operations
-cetus-cli query wallet-info          # Show wallet info
-cetus-cli query balance              # Query balances
+sui-lancet query wallet-info
+sui-lancet query balance
+sui-lancet query object <objectId> --dynamic-fields
 ```
 
 ## Web UI
@@ -101,9 +111,9 @@ The web interface provides a visual dashboard for:
 - Wallet connection (Sui Wallet, Suiet, etc.)
 - Dolphin ID sign-in via Sui personal-message auth endpoints
 - Coin management (merge, split, transfer)
-- Transaction simulation and signing
-- DEX swap operations
-- Vault management
+- Wallet migration and Kiosk management
+- Transaction simulation and security scanning
+- Gas object filtering and grouped object ID export
 
 ### Local Development
 
