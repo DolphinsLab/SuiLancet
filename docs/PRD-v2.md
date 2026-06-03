@@ -1,8 +1,26 @@
 # SuiLancet v2 - Product Requirements Document
 
 > **Version**: 2.0
-> **Last Updated**: 2026-01-23
-> **Status**: Draft
+> **Last Updated**: 2026-06-03
+> **Status**: Implemented
+
+---
+
+## 0. Current Implementation Status
+
+v2 的核心定位和主要功能已经落地到 SDK、CLI 和 Web UI：
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Toolkit architecture | ✅ Implemented | Source is organized under `src/core`, `src/modules`, `src/cli`, and `web`. |
+| Clean module | ✅ Implemented | Zero destroy, coin merge, dust cleaning, and airdrop scan/destroy APIs are exported. |
+| Manage module | ✅ Implemented | Transfers, coin split, vault operations, wallet migration, and Kiosk operations are available. |
+| Secure module | ✅ Implemented | Transaction simulation, wallet scan, gas info, and gas estimation are available. |
+| Query module | ✅ Implemented | Asset overview, transaction history/parser, object inspection, and dynamic fields are available. |
+| Web UI | ✅ Implemented | Dashboard, Portfolio, Clean, Manage, Secure, Query, Settings, wallet connect, and Dolphin ID sign-in are present. |
+| Verification | ✅ Baseline added | SDK/CLI build, Web build, root Jest smoke tests, and npm audit are covered in the hardening pass. |
+
+Remaining work should focus on expanding test coverage, polishing CLI output, and validating more flows against testnet/mainnet wallets.
 
 ---
 
@@ -312,7 +330,7 @@ sui-lancet query object <object-id> --dynamic-fields
 
 ## 5. Feature Deprecation Plan
 
-### 5.1 To Remove
+### 5.1 Removed From v2 Scope
 
 | Module | 功能 | 理由 | 替代方案 |
 |--------|------|------|---------|
@@ -329,6 +347,8 @@ sui-lancet query object <object-id> --dynamic-fields
 1. **Phase 1**: 标记即将废弃的功能（deprecation warning）
 2. **Phase 2**: 在文档中推荐替代方案
 3. **Phase 3**: 从主代码中移除，保留在 `legacy/` 分支
+
+As of 2026-06-03, the active v2 codebase no longer keeps the deprecated trading/arbitrage modules in the primary `src/modules` toolkit surface.
 
 ---
 
