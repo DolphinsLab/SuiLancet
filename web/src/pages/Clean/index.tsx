@@ -1,10 +1,23 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit'
+import {
+  useCurrentAccount,
+  useCurrentClient,
+} from '@mysten/dapp-kit-react'
 import { Transaction } from '@mysten/sui/transactions'
-import type { CoinStruct } from '@mysten/sui/client'
 import { useToast } from '../../components/Toast'
+import { listAllOwnedCoins } from '../../lib/coins'
+import {
+  type TransactionInput,
+  useSignAndExecuteTransaction,
+} from '../../lib/sui-dapp'
 
-type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransaction>['mutate']>[0]
+interface CoinStruct {
+  coinType: string
+  coinObjectId: string
+  balance: string
+  version: string
+  digest: string
+}
 
 type CoinAction = 'merge' | 'split' | 'transfer' | 'destroy' | 'gas'
 
@@ -30,7 +43,7 @@ const SUI_COIN_TYPE = '0x0000000000000000000000000000000000000000000000000000000
 
 export default function Coin() {
   const account = useCurrentAccount()
-  const client = useSuiClient()
+  const client = useCurrentClient()
   const toast = useToast()
   const [action, setAction] = useState<CoinAction>('merge')
   const [selectedCoinType, setSelectedCoinType] = useState<string>('')
@@ -82,30 +95,14 @@ export default function Coin() {
     if (!account?.address) return
 
     setIsLoading(true)
-    const allCoins: CoinStruct[] = []
-    let cursor: string | null | undefined = null
-
     try {
-      do {
-        const response = await client.getAllCoins({
-          owner: account.address,
-          cursor: cursor,
-          limit: 50,
-        })
-        allCoins.push(...response.data)
-        cursor = response.hasNextPage ? response.nextCursor : null
-
-        // Stop if we've reached the max
-        if (allCoins.length >= MAX_COINS_FETCH) {
-          setHasMore(!!cursor)
-          break
-        }
-      } while (cursor)
-
-      setCoins(allCoins.slice(0, MAX_COINS_FETCH))
-      if (allCoins.length < MAX_COINS_FETCH) {
-        setHasMore(false)
-      }
+      const allCoins = await listAllOwnedCoins(
+        client,
+        account.address,
+        MAX_COINS_FETCH,
+      )
+      setCoins(allCoins)
+      setHasMore(allCoins.length >= MAX_COINS_FETCH)
     } catch (error) {
       console.error('Error fetching coins:', error)
     } finally {

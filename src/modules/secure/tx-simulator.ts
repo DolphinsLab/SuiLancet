@@ -42,7 +42,7 @@ export async function simulateTransaction(
     const result = await client.devInspectTransactionBlock(tx)
 
     const effects = result.effects
-    const isSuccess = effects.status.status === "success"
+    const isSuccess = effects.status.success
 
     // Parse gas costs
     const gasUsed = {
@@ -56,50 +56,36 @@ export async function simulateTransaction(
       ),
     }
 
-    // Parse balance changes (field may exist at runtime on newer SDK versions)
-    const balanceChanges: BalanceChange[] = []
-    const resultAny = result as unknown as Record<string, unknown>
-    if (Array.isArray(resultAny.balanceChanges)) {
-      for (const change of resultAny.balanceChanges as Array<{ coinType: string; amount: string; owner: unknown }>) {
-        balanceChanges.push({
-          coinType: change.coinType,
-          amount: change.amount,
-          owner: typeof change.owner === "object" && change.owner !== null && "AddressOwner" in change.owner
-            ? (change.owner as { AddressOwner: string }).AddressOwner
-            : "unknown",
-        })
-      }
-    }
+    const balanceChanges: BalanceChange[] = result.balanceChanges.map(
+      (change) => ({
+        coinType: change.coinType,
+        amount: change.amount,
+        owner: change.address,
+      })
+    )
 
     // Parse object changes
-    const objectChanges: ObjectChange[] = []
-    if (effects.created) {
-      for (const obj of effects.created) {
-        objectChanges.push({
-          type: "created",
-          objectType: "unknown",
-          objectId: obj.reference?.objectId ?? "unknown",
-        })
+    const objectChanges: ObjectChange[] = effects.changedObjects.flatMap(
+      (object) => {
+        const type =
+          object.idOperation === "Created"
+            ? "created"
+            : object.idOperation === "Deleted"
+              ? "deleted"
+              : object.idOperation === "None" &&
+                  object.outputState !== "DoesNotExist"
+                ? "mutated"
+                : null
+
+        return type
+          ? [{
+              type,
+              objectType: "unknown",
+              objectId: object.objectId,
+            }]
+          : []
       }
-    }
-    if (effects.mutated) {
-      for (const obj of effects.mutated) {
-        objectChanges.push({
-          type: "mutated",
-          objectType: "unknown",
-          objectId: obj.reference?.objectId ?? "unknown",
-        })
-      }
-    }
-    if (effects.deleted) {
-      for (const obj of effects.deleted) {
-        objectChanges.push({
-          type: "deleted",
-          objectType: "unknown",
-          objectId: obj.objectId ?? "unknown",
-        })
-      }
-    }
+    )
 
     // Format output
     console.log("\n┌─────────────────────────────────────────┐")
@@ -108,7 +94,7 @@ export async function simulateTransaction(
     console.log(`│ Status: ${isSuccess ? "SUCCESS" : "FAILED"}`)
 
     if (!isSuccess) {
-      console.log(`│ Error: ${effects.status.error ?? "unknown"}`)
+      console.log(`│ Error: ${effects.status.error?.message ?? "unknown"}`)
     }
 
     console.log("│")
@@ -147,14 +133,14 @@ export async function simulateTransaction(
       balanceChanges,
       objectChanges,
       events: result.events ?? [],
-      error: isSuccess ? undefined : effects.status.error,
+      error: isSuccess ? undefined : effects.status.error?.message,
     }
 
     return {
       success: isSuccess,
       message: isSuccess
         ? `Simulation successful. Net gas: ${formatMist(gasUsed.total)} SUI`
-        : `Simulation failed: ${effects.status.error}`,
+        : `Simulation failed: ${effects.status.error?.message ?? "unknown"}`,
       data: simResult,
     }
   } catch (e) {

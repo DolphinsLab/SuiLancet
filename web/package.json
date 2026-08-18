@@ -6,15 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "tsc -b --pretty false",
     "preview": "vite preview"
   },
   "dependencies": {
     "@dolphin-id/adapter-sui": "^1.0.0",
     "@dolphin-id/core": "^1.0.0",
     "@dolphin-id/react": "^1.0.0",
-    "@mysten/dapp-kit": "^0.14.0",
-    "@mysten/sui": "^1.6.0",
+    "@mysten/dapp-kit-core": "1.6.12",
+    "@mysten/dapp-kit-react": "2.1.14",
+    "@mysten/sui": "2.23.1",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-tabs": "^1.0.4",
@@ -22,19 +23,17 @@
     "@tanstack/react-query": "^5.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.22.0",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "22.20.1",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.0",
+    "@vitejs/plugin-react": "6.0.4",
     "autoprefixer": "^10.4.18",
-    "eslint": "^9.0.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.4.0",
-    "vite": "^5.4.0"
+    "vite": "8.1.5"
   }
 }

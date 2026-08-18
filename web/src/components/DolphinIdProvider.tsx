@@ -2,7 +2,11 @@ import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, 
 import { createSuiAdapter, type SuiNetwork } from '@dolphin-id/adapter-sui'
 import { DolphinProvider, useDolphin, useSession, type DolphinRefreshTokenSnapshot } from '@dolphin-id/react'
 import type { SessionSnapshot, Wallet } from '@dolphin-id/core'
-import { useCurrentAccount, useCurrentWallet, useSuiClientContext } from '@mysten/dapp-kit'
+import {
+  useCurrentAccount,
+  useCurrentNetwork,
+  useCurrentWallet,
+} from '@mysten/dapp-kit-react'
 import {
   DolphinIdConfig,
   fetchDolphinIdSession,
@@ -25,7 +29,7 @@ interface DolphinIdContextValue {
 const DolphinIdContext = createContext<DolphinIdContextValue | null>(null)
 
 export function DolphinIdProvider({ children }: { children: ReactNode }) {
-  const { network } = useSuiClientContext()
+  const network = useCurrentNetwork()
   const config = useMemo(() => getDolphinIdConfig(), [])
   const adapters = useMemo(
     () => [createSuiAdapter({ network: toDolphinSuiNetwork(network) })],
@@ -58,7 +62,7 @@ function DolphinIdSessionBridge({
   config: DolphinIdConfig
 }) {
   const account = useCurrentAccount()
-  const { currentWallet } = useCurrentWallet()
+  const currentWallet = useCurrentWallet()
   const dolphin = useDolphin()
   const dolphinSession = useSession()
   const [restoredSession, setRestoredSession] = useState<SessionSnapshot | null>(null)

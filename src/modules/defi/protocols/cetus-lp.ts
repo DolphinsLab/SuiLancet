@@ -1,57 +1,38 @@
-import { SuiClient } from "@mysten/sui/client"
+import type { ClientWithCoreApi } from "@mysten/sui/client"
 import { LPPosition, LPToken } from "../types"
 import { CETUS } from "../constants"
+import { listOwnedMoveObjects } from "../owned-objects"
 
 /**
  * Cetus CLMM LP position adapter.
  * Scans wallet for Position NFT objects that represent concentrated liquidity positions.
  */
 export async function fetchCetusPositions(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string
 ): Promise<LPPosition[]> {
   const positions: LPPosition[] = []
 
-  let cursor: string | null | undefined = null
-  let hasNext = true
-
-  while (hasNext) {
-    const ownedObjects = await client.getOwnedObjects({
-      owner: walletAddress,
-      cursor: cursor ?? undefined,
-      options: { showType: true, showContent: true },
-      limit: 50,
-    })
-
-    for (const obj of ownedObjects.data) {
-      if (!obj.data?.type) continue
-
+  for (const object of await listOwnedMoveObjects(client, walletAddress)) {
       // Match Cetus position NFTs
-      const typeStr = obj.data.type
+      const typeStr = object.type
       if (
         (typeStr.includes(CETUS.PACKAGE) ||
           typeStr.includes(CETUS.CLMM_PACKAGE)) &&
         typeStr.includes(CETUS.POSITION_TYPE_PATTERN)
       ) {
-        const position = parseCetusPosition(obj.data)
+        const position = parseCetusPosition(object)
         if (position) {
           positions.push(position)
         }
       }
-    }
-
-    hasNext = ownedObjects.hasNextPage
-    cursor = ownedObjects.nextCursor
   }
 
   return positions
 }
 
 function parseCetusPosition(objectData: any): LPPosition | null {
-  const content = objectData.content
-  if (!content || content.dataType !== "moveObject") return null
-
-  const fields = content.fields as any
+  const fields = objectData.fields as any
   if (!fields) return null
 
   // Extract type parameters from the Position type

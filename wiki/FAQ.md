@@ -98,10 +98,12 @@ Then open http://localhost:3000 in your browser.
 
 ### Why isn't the wallet connect button working?
 
-Make sure the dapp-kit CSS is imported in `main.tsx`:
+Make sure the application is wrapped in the new dApp Kit provider:
 
 ```typescript
-import '@mysten/dapp-kit/dist/index.css'
+<DAppKitProvider dAppKit={dAppKit}>
+  <App />
+</DAppKitProvider>
 ```
 
 ### Can I merge more than 2048 coins?
@@ -169,13 +171,13 @@ In the web app:
 
 ## Troubleshooting
 
-### "Missing SUI_ENDPOINT" error
+### "Missing SUI_GRPC_ENDPOINT" error
 
 Add the appropriate endpoint to your `.env`:
 
 ```bash
-SUI_ENDPOINT_MAINNET=https://fullnode.mainnet.sui.io
-SUI_ENDPOINT_TESTNET=https://fullnode.testnet.sui.io
+SUI_GRPC_ENDPOINT_MAINNET=https://fullnode.mainnet.sui.io:443
+SUI_GRPC_ENDPOINT_TESTNET=https://fullnode.testnet.sui.io:443
 ```
 
 ### "No wallet secret or phrase found"

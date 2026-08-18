@@ -1,4 +1,5 @@
-import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit'
+import { useCurrentAccount } from '@mysten/dapp-kit-react'
+import { ConnectButton } from '@mysten/dapp-kit-react/ui'
 import { useDolphinId } from '../DolphinIdProvider'
 import { useToast } from '../Toast'
 
@@ -51,10 +52,7 @@ export default function WalletButton() {
           </button>
         )
       )}
-      <ConnectButton
-        connectText="Connect Wallet"
-        className="btn-primary"
-      />
+      <ConnectButton>Connect Wallet</ConnectButton>
     </div>
   )
 }

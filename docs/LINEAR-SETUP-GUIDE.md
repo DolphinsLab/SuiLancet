@@ -184,7 +184,7 @@ Linear may not have an "In Review" status by default. Add it manually:
 Improve existing features and fix known issues
 - Complete Swap page execution logic
 - Complete Vault Deposit/Withdraw execution logic
-- Implement custom RPC endpoint support
+- Implement custom gRPC endpoint support
 - Add unit tests (target 80% coverage)
 ```
 
@@ -383,7 +383,7 @@ Create the following issues in priority order:
 | 1 | Complete Swap page transaction execution logic | `feature`, `web`, `dex` | P1 |
 | 2 | Complete Vault Deposit functionality | `feature`, `web` | P1 |
 | 3 | Complete Vault Withdraw functionality | `feature`, `web` | P1 |
-| 4 | Implement custom RPC endpoint support | `feature`, `web` | P2 |
+| 4 | Implement custom gRPC endpoint support | `feature`, `web` | P2 |
 | 5 | Add core SDK unit tests | `test`, `sdk` | P2 |
 
 #### Medium Priority (Cycle 2)

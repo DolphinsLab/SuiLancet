@@ -1,3 +1,4 @@
+import { vi } from "vitest"
 import { completionCoin } from "../src/common/coin"
 import { getCoinDecimals } from "../src/common/price"
 
@@ -23,7 +24,11 @@ describe("common utilities", () => {
   describe("getCoinDecimals", () => {
     it("returns metadata decimals when available", async () => {
       const client = {
-        getCoinMetadata: jest.fn().mockResolvedValue({ decimals: 6 }),
+        core: {
+          getCoinMetadata: vi
+            .fn<() => Promise<{ coinMetadata: { decimals: number } }>>()
+            .mockResolvedValue({ coinMetadata: { decimals: 6 } }),
+        },
       }
 
       await expect(getCoinDecimals(client as never, "0x2::sui::SUI")).resolves.toBe(6)
@@ -31,7 +36,11 @@ describe("common utilities", () => {
 
     it("falls back to 9 decimals when metadata lookup fails", async () => {
       const client = {
-        getCoinMetadata: jest.fn().mockRejectedValue(new Error("RPC unavailable")),
+        core: {
+          getCoinMetadata: vi
+            .fn<() => Promise<never>>()
+            .mockRejectedValue(new Error("gRPC unavailable")),
+        },
       }
 
       await expect(getCoinDecimals(client as never, "0x2::sui::SUI")).resolves.toBe(9)

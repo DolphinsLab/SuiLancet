@@ -1,12 +1,15 @@
 import { useState } from 'react'
-import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit'
+import {
+  useCurrentAccount,
+  useCurrentClient,
+} from '@mysten/dapp-kit-react'
 import { useToast } from '../../components/Toast'
 
 type QueryAction = 'object' | 'transaction'
 
 export default function Query() {
   const account = useCurrentAccount()
-  const client = useSuiClient()
+  const client = useCurrentClient()
   const toast = useToast()
   const [action, setAction] = useState<QueryAction>('object')
   const [objectId, setObjectId] = useState('')
@@ -22,17 +25,12 @@ export default function Query() {
     setObjectResult(null)
 
     try {
-      const result = await client.getObject({
-        id: objectId.trim(),
-        options: { showContent: true, showType: true, showOwner: true, showDisplay: true },
+      const { object } = await client.core.getObject({
+        objectId: objectId.trim(),
+        include: { json: true, display: true },
       })
 
-      if (!result.data) {
-        toast.error('Not Found', 'Object does not exist or has been deleted')
-        return
-      }
-
-      setObjectResult(result.data)
+      setObjectResult(object)
     } catch (err: any) {
       toast.error('Query Failed', err.message)
     } finally {
@@ -47,18 +45,22 @@ export default function Query() {
     setTxResult(null)
 
     try {
-      const result = await client.getTransactionBlock({
+      const result = await client.core.getTransaction({
         digest: txDigest.trim(),
-        options: {
-          showInput: true,
-          showEffects: true,
-          showEvents: true,
-          showBalanceChanges: true,
-          showObjectChanges: true,
+        include: {
+          transaction: true,
+          effects: true,
+          events: true,
+          balanceChanges: true,
+          objectTypes: true,
         },
       })
 
-      setTxResult(result)
+      setTxResult(
+        result.$kind === 'Transaction'
+          ? result.Transaction
+          : result.FailedTransaction,
+      )
     } catch (err: any) {
       toast.error('Query Failed', err.message)
     } finally {
@@ -136,19 +138,17 @@ export default function Query() {
                   <div className="flex justify-between">
                     <span className="text-gray-400">Owner</span>
                     <span className="text-white font-mono text-sm">
-                      {typeof objectResult.owner === 'object'
-                        ? objectResult.owner.AddressOwner || objectResult.owner.Shared?.initial_shared_version || 'Immutable'
-                        : objectResult.owner}
+                      {formatOwner(objectResult.owner)}
                     </span>
                   </div>
                 )}
               </div>
 
-              {objectResult.content && (
+              {objectResult.json && (
                 <div className="bg-slate-800 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-gray-300 mb-2">Content</h3>
                   <pre className="text-xs text-gray-300 overflow-x-auto max-h-60">
-                    {JSON.stringify(objectResult.content, null, 2)}
+                    {JSON.stringify(objectResult.json, null, 2)}
                   </pre>
                 </div>
               )}
@@ -182,30 +182,22 @@ export default function Query() {
             <div className="space-y-4">
               {/* Status */}
               <div className={`bg-slate-700 rounded-lg p-4 border ${
-                txResult.effects?.status?.status === 'success'
+                txResult.status?.success
                   ? 'border-green-600'
                   : 'border-red-600'
               }`}>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Status</span>
                   <span className={`font-semibold capitalize ${
-                    txResult.effects?.status?.status === 'success' ? 'text-green-400' : 'text-red-400'
+                    txResult.status?.success ? 'text-green-400' : 'text-red-400'
                   }`}>
-                    {txResult.effects?.status?.status || 'Unknown'}
+                    {txResult.status?.success ? 'success' : 'failed'}
                   </span>
                 </div>
                 <div className="flex justify-between mt-2">
                   <span className="text-gray-400">Digest</span>
                   <span className="text-white font-mono text-sm">{txResult.digest}</span>
                 </div>
-                {txResult.timestampMs && (
-                  <div className="flex justify-between mt-2">
-                    <span className="text-gray-400">Time</span>
-                    <span className="text-white text-sm">
-                      {new Date(Number(txResult.timestampMs)).toLocaleString()}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Gas */}
@@ -261,9 +253,9 @@ export default function Query() {
                   <div className="space-y-2 max-h-60 overflow-y-auto">
                     {txResult.events.map((event: any, i: number) => (
                       <div key={i} className="bg-slate-800 rounded p-2">
-                        <div className="text-sui-400 text-xs font-mono mb-1">{event.type}</div>
+                        <div className="text-sui-400 text-xs font-mono mb-1">{event.eventType}</div>
                         <pre className="text-gray-300 text-xs overflow-x-auto">
-                          {JSON.stringify(event.parsedJson, null, 2)}
+                          {JSON.stringify(event.json, null, 2)}
                         </pre>
                       </div>
                     ))}
@@ -276,4 +268,12 @@ export default function Query() {
       )}
     </div>
   )
+}
+
+function formatOwner(owner: Record<string, unknown>): string {
+  if (owner.$kind === 'AddressOwner') return String(owner.AddressOwner)
+  if (owner.$kind === 'ObjectOwner') return String(owner.ObjectOwner)
+  if (owner.$kind === 'Shared') return 'Shared'
+  if (owner.$kind === 'Immutable') return 'Immutable'
+  return String(owner.$kind ?? 'Unknown')
 }

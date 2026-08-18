@@ -1,45 +1,30 @@
-import { SuiClient } from "@mysten/sui/client"
+import type { ClientWithCoreApi } from "@mysten/sui/client"
+import { listAllBalances } from "../../../common/balance"
 import { LendingPosition, LendingAsset } from "../types"
 import { SCALLOP } from "../constants"
+import { listOwnedMoveObjects } from "../owned-objects"
 
 /**
  * Scallop position adapter.
  * Scans wallet for Obligation objects and MarketCoin (sCoin) holdings.
  */
 export async function fetchScallopPositions(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string
 ): Promise<LendingPosition[]> {
   const positions: LendingPosition[] = []
 
-  let cursor: string | null | undefined = null
-  let hasNext = true
-
-  while (hasNext) {
-    const ownedObjects = await client.getOwnedObjects({
-      owner: walletAddress,
-      cursor: cursor ?? undefined,
-      options: { showType: true, showContent: true },
-      limit: 50,
-    })
-
-    for (const obj of ownedObjects.data) {
-      if (!obj.data?.type) continue
-
+  for (const object of await listOwnedMoveObjects(client, walletAddress)) {
       // Match Scallop obligation objects
       if (
-        obj.data.type.includes(SCALLOP.PACKAGE) &&
-        obj.data.type.includes(SCALLOP.OBLIGATION_TYPE_PATTERN)
+        object.type.includes(SCALLOP.PACKAGE) &&
+        object.type.includes(SCALLOP.OBLIGATION_TYPE_PATTERN)
       ) {
-        const position = parseScallopObligation(obj.data)
+        const position = parseScallopObligation(object)
         if (position) {
           positions.push(position)
         }
       }
-    }
-
-    hasNext = ownedObjects.hasNextPage
-    cursor = ownedObjects.nextCursor
   }
 
   // Also check for sCoin (MarketCoin) balances as deposit receipts
@@ -52,10 +37,7 @@ export async function fetchScallopPositions(
 }
 
 function parseScallopObligation(objectData: any): LendingPosition | null {
-  const content = objectData.content
-  if (!content || content.dataType !== "moveObject") return null
-
-  const fields = content.fields as any
+  const fields = objectData.fields as any
   if (!fields) return null
 
   const deposits: LendingAsset[] = []
@@ -100,13 +82,13 @@ function parseScallopObligation(objectData: any): LendingPosition | null {
  * sCoins are fungible tokens that represent deposited assets.
  */
 async function fetchScallopMarketCoins(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string
 ): Promise<LendingPosition | null> {
   const deposits: LendingAsset[] = []
 
   // Get all coin balances and filter for sCoin patterns
-  const allBalances = await client.getAllBalances({ owner: walletAddress })
+  const allBalances = await listAllBalances(client, walletAddress)
 
   for (const balance of allBalances) {
     // sCoin types typically contain "scoin" or "market_coin" in the type
@@ -116,7 +98,7 @@ async function fetchScallopMarketCoins(
       coinType.includes("scoin") ||
       coinType.includes("market_coin")
     ) {
-      const amount = Number(balance.totalBalance)
+      const amount = Number(balance.balance)
       if (amount > 0) {
         deposits.push({
           coinType: balance.coinType,

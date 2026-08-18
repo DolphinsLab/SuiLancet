@@ -1,4 +1,4 @@
-import { SuiClient } from "@mysten/sui/client"
+import type { ClientWithCoreApi } from "@mysten/sui/client"
 
 const SUI_TYPE =
   "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
@@ -67,12 +67,12 @@ export async function fetchTokenPrices(
  * Get decimals for a coin type from on-chain metadata.
  */
 export async function getCoinDecimals(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   coinType: string
 ): Promise<number> {
   try {
-    const metadata = await client.getCoinMetadata({ coinType })
-    return metadata?.decimals ?? 9
+    const { coinMetadata } = await client.core.getCoinMetadata({ coinType })
+    return coinMetadata?.decimals ?? 9
   } catch {
     return 9
   }

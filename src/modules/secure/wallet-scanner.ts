@@ -1,3 +1,4 @@
+import type { SuiClientTypes } from "@mysten/sui/client"
 import { SuiScriptClient } from "../../core"
 import { CommandResult } from "../../core/types"
 
@@ -48,25 +49,25 @@ export async function scanWalletSecurity(
 
   // 1. Get all owned objects
   const allObjects: { objectId: string; type: string }[] = []
-  let cursor: string | null | undefined = undefined
-  let hasNext = true
+  let cursor: string | null = null
 
-  while (hasNext) {
-    const result = await client.client.getOwnedObjects({
+  while (true) {
+    const result: SuiClientTypes.ListOwnedObjectsResponse =
+      await client.client.core.listOwnedObjects({
       owner: address,
-      options: { showType: true },
-      cursor: cursor ?? undefined,
+      cursor,
       limit: 50,
-    })
+      })
 
-    for (const obj of result.data) {
-      if (obj.data?.type) {
-        allObjects.push({ objectId: obj.data.objectId, type: obj.data.type })
-      }
+    for (const object of result.objects) {
+      allObjects.push({ objectId: object.objectId, type: object.type })
     }
 
-    hasNext = result.hasNextPage
-    cursor = result.nextCursor
+    if (!result.hasNextPage) break
+    if (!result.cursor) {
+      throw new Error("gRPC object pagination returned no cursor")
+    }
+    cursor = result.cursor
   }
 
   console.log(`  Total objects: ${allObjects.length}`)
@@ -111,8 +112,9 @@ export async function scanWalletSecurity(
   let unverifiedCount = 0
   for (const coinType of coinTypes) {
     try {
-      const metadata = await client.client.getCoinMetadata({ coinType })
-      if (!metadata) {
+      const { coinMetadata } =
+        await client.client.core.getCoinMetadata({ coinType })
+      if (!coinMetadata) {
         unverifiedCount++
       }
     } catch {

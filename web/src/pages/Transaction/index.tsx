@@ -1,13 +1,18 @@
 import { useState } from 'react'
-import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit'
+import {
+  useCurrentAccount,
+  useCurrentClient,
+} from '@mysten/dapp-kit-react'
 import { Transaction } from '@mysten/sui/transactions'
 import { useTransactionToast } from '../../components/TransactionToast'
-
-type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransaction>['mutate']>[0]
+import {
+  type TransactionInput,
+  useSignAndExecuteTransaction,
+} from '../../lib/sui-dapp'
 
 export default function TransactionPage() {
   const account = useCurrentAccount()
-  const client = useSuiClient()
+  const client = useCurrentClient()
   const txToast = useTransactionToast()
   const [txBase64, setTxBase64] = useState('')
   const [simulationResult, setSimulationResult] = useState<any>(null)
@@ -24,12 +29,21 @@ export default function TransactionPage() {
     setSimulationResult(null)
 
     try {
-      // Decode Base64 and simulate
-      const result = await client.dryRunTransactionBlock({
-        transactionBlock: txBase64,
+      const result = await client.core.simulateTransaction({
+        transaction: Transaction.from(txBase64),
+        include: {
+          effects: true,
+          events: true,
+          balanceChanges: true,
+          transaction: true,
+        },
       })
 
-      setSimulationResult(result)
+      setSimulationResult(
+        result.$kind === 'Transaction'
+          ? result.Transaction
+          : result.FailedTransaction,
+      )
     } catch (err: any) {
       setError(err.message || 'Simulation failed')
     } finally {
@@ -116,19 +130,19 @@ export default function TransactionPage() {
         <div className="space-y-4">
           {/* Status */}
           <div className={`card ${
-            simulationResult.effects?.status?.status === 'success'
+            simulationResult.status?.success
               ? 'bg-green-900/30 border border-green-500'
               : 'bg-red-900/30 border border-red-500'
           }`}>
             <h3 className="text-lg font-semibold text-white mb-2">Simulation Result</h3>
             <div className="flex items-center space-x-2">
               <span className={`text-2xl ${
-                simulationResult.effects?.status?.status === 'success' ? 'text-green-400' : 'text-red-400'
+                simulationResult.status?.success ? 'text-green-400' : 'text-red-400'
               }`}>
-                {simulationResult.effects?.status?.status === 'success' ? '✓' : '✗'}
+                {simulationResult.status?.success ? '✓' : '✗'}
               </span>
               <span className="text-white capitalize">
-                {simulationResult.effects?.status?.status || 'Unknown'}
+                {simulationResult.status?.success ? 'success' : 'failed'}
               </span>
             </div>
           </div>
@@ -178,10 +192,10 @@ export default function TransactionPage() {
                 {simulationResult.events.map((event: any, index: number) => (
                   <div key={index} className="bg-slate-700 rounded-lg p-3">
                     <div className="text-sui-400 text-sm font-mono mb-1">
-                      {event.type}
+                      {event.eventType}
                     </div>
                     <pre className="text-gray-300 text-xs overflow-x-auto">
-                      {JSON.stringify(event.parsedJson, null, 2)}
+                      {JSON.stringify(event.json, null, 2)}
                     </pre>
                   </div>
                 ))}

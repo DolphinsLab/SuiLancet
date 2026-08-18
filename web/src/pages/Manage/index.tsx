@@ -1,14 +1,22 @@
 import { useState } from 'react'
-import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit'
+import {
+  useCurrentAccount,
+  useCurrentClient,
+} from '@mysten/dapp-kit-react'
+import type { SuiClientTypes } from '@mysten/sui/client'
 import { Transaction } from '@mysten/sui/transactions'
 import { useToast } from '../../components/Toast'
+import { listAllOwnedCoins } from '../../lib/coins'
+import {
+  type TransactionInput,
+  useSignAndExecuteTransaction,
+} from '../../lib/sui-dapp'
 
-type TransactionInput = Parameters<ReturnType<typeof useSignAndExecuteTransaction>['mutate']>[0]
 type ManageAction = 'transfer' | 'migrate'
 
 export default function Manage() {
   const account = useCurrentAccount()
-  const client = useSuiClient()
+  const client = useCurrentClient()
   const toast = useToast()
   const [action, setAction] = useState<ManageAction>('transfer')
   const [recipient, setRecipient] = useState('')
@@ -49,38 +57,34 @@ export default function Manage() {
 
     try {
       // Fetch all coins
-      const allCoins: { objectId: string; coinType: string }[] = []
-      let cursor: string | null | undefined = null
-      do {
-        const response = await client.getAllCoins({
-          owner: account.address,
-          cursor: cursor,
-          limit: 50,
-        })
-        allCoins.push(...response.data.map(c => ({ objectId: c.coinObjectId, coinType: c.coinType })))
-        cursor = response.hasNextPage ? response.nextCursor : null
-      } while (cursor)
+      const ownedCoins = await listAllOwnedCoins(client, account.address)
+      const allCoins = ownedCoins.map((coin) => ({
+        objectId: coin.coinObjectId,
+        coinType: coin.coinType,
+      }))
 
       // Fetch all objects (non-coin)
       const allObjects: string[] = []
-      let objCursor: string | null | undefined = null
+      let objCursor: string | null = null
       let hasNext = true
       while (hasNext) {
-        const result = await client.getOwnedObjects({
-          owner: account.address,
-          options: { showType: true },
-          cursor: objCursor ?? undefined,
-          limit: 50,
-        })
-        for (const obj of result.data) {
-          if (!obj.data) continue
-          const type = obj.data.type ?? ''
-          if (!type.startsWith('0x2::coin::Coin<')) {
-            allObjects.push(obj.data.objectId)
+        const result: SuiClientTypes.ListOwnedObjectsResponse =
+          await client.core.listOwnedObjects({
+            owner: account.address,
+            cursor: objCursor,
+            limit: 50,
+          })
+        for (const object of result.objects) {
+          const type = object.type
+          if (!type.includes('::coin::Coin<')) {
+            allObjects.push(object.objectId)
           }
         }
         hasNext = result.hasNextPage
-        objCursor = result.nextCursor
+        if (hasNext && !result.cursor) {
+          throw new Error('gRPC object pagination returned no cursor')
+        }
+        objCursor = result.cursor
       }
 
       const suiType = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'

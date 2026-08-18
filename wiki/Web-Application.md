@@ -12,7 +12,7 @@ The web application provides a user-friendly interface for managing Sui wallets 
 - React 18 + TypeScript
 - Vite (build tool)
 - TailwindCSS (styling)
-- @mysten/dapp-kit (wallet connection)
+- @mysten/dapp-kit-react (wallet connection)
 
 ---
 
@@ -231,11 +231,13 @@ Output is generated in `web/dist/`.
 
 ### Wallet Modal Not Showing
 
-**Cause:** Missing dapp-kit CSS
+**Cause:** The dApp Kit provider is missing
 
-**Solution:** Ensure CSS is imported in `main.tsx`:
+**Solution:** Ensure the app is wrapped in `DAppKitProvider`:
 ```typescript
-import '@mysten/dapp-kit/dist/index.css'
+<DAppKitProvider dAppKit={dAppKit}>
+  <App />
+</DAppKitProvider>
 ```
 
 ### Blank Page After Build

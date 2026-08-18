@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
 import Layout from './components/Layout'
 import { ToastProvider } from './components/Toast'
 import { TransactionToastProvider } from './components/TransactionToast'
@@ -11,23 +11,48 @@ import Query from './pages/Query'
 import Settings from './pages/Settings'
 
 function App() {
+  const [pathname, setPathname] = useState(window.location.pathname)
+
+  useEffect(() => {
+    const handlePopState = () => setPathname(window.location.pathname)
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  const navigate = useCallback((path: string) => {
+    if (path === window.location.pathname) return
+    window.history.pushState(null, '', path)
+    setPathname(path)
+  }, [])
+
   return (
     <ToastProvider>
       <TransactionToastProvider>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/clean" element={<Clean />} />
-            <Route path="/manage" element={<Manage />} />
-            <Route path="/secure" element={<Secure />} />
-            <Route path="/query" element={<Query />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
+        <Layout pathname={pathname} onNavigate={navigate}>
+          {renderPage(pathname)}
         </Layout>
       </TransactionToastProvider>
     </ToastProvider>
   )
+}
+
+function renderPage(pathname: string) {
+  switch (pathname) {
+    case '/portfolio':
+      return <Portfolio />
+    case '/clean':
+      return <Clean />
+    case '/manage':
+      return <Manage />
+    case '/secure':
+      return <Secure />
+    case '/query':
+      return <Query />
+    case '/settings':
+      return <Settings />
+    default:
+      return <Dashboard />
+  }
 }
 
 export default App

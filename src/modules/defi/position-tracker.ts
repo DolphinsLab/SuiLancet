@@ -1,4 +1,4 @@
-import { SuiClient } from "@mysten/sui/client"
+import type { ClientWithCoreApi } from "@mysten/sui/client"
 import {
   PortfolioSummary,
   LendingPosition,
@@ -26,7 +26,7 @@ export interface FetchOptions {
  * Returns a unified PortfolioSummary.
  */
 export async function fetchAllPositions(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string,
   options: FetchOptions = {}
 ): Promise<PortfolioSummary> {
@@ -114,7 +114,7 @@ export async function fetchAllPositions(
  * Fetch lending positions from all supported protocols.
  */
 async function fetchLendingPositions(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string
 ): Promise<LendingPosition[]> {
   const results = await Promise.allSettled([
@@ -136,7 +136,7 @@ async function fetchLendingPositions(
  * Fetch LP positions from all supported protocols.
  */
 async function fetchLPPositions(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string
 ): Promise<LPPosition[]> {
   const results = await Promise.allSettled([
@@ -231,7 +231,7 @@ async function enrichWithPricing(
  * CLI-friendly wrapper that returns a CommandResult.
  */
 export async function getDefiPositions(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string,
   options: FetchOptions = {}
 ): Promise<CommandResult> {

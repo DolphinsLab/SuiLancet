@@ -1,9 +1,10 @@
 import { fromBase64 } from "@mysten/bcs"
-import { SuiClient } from "@mysten/sui/client"
+import type { SuiClientTypes } from "@mysten/sui/client"
+import { SuiGrpcClient } from "@mysten/sui/grpc"
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519"
 import { config } from "dotenv"
-import { CoinObject } from "./types"
-import { completionCoin } from "../common"
+import { CoinObject, NetworkEnv } from "./types"
+import { completionCoin } from "../common/coin"
 import {
   Transaction,
   TransactionObjectArgument,
@@ -11,31 +12,44 @@ import {
 
 config()
 
+/**
+ * Create the only Sui transport used by SuiLancet.
+ *
+ * @see https://sdk.mystenlabs.com/sui/clients/grpc
+ */
+export function createSuiGrpcClient(
+  network: NetworkEnv,
+  baseUrl: string
+): SuiGrpcClient {
+  return new SuiGrpcClient({ network, baseUrl })
+}
+
 export class SuiScriptClient {
   public endpoint: string
-  public client: SuiClient
+  public client: SuiGrpcClient
   public walletAddress: string
   private keypair: Ed25519Keypair
 
-  constructor(env: "testnet" | "pre-mainnet" | "mainnet") {
+  constructor(env: NetworkEnv) {
     this.endpoint =
       env === "testnet"
-        ? process.env.SUI_ENDPOINT_TESTNET!
+        ? process.env.SUI_GRPC_ENDPOINT_TESTNET!
         : env === "pre-mainnet"
-        ? process.env.SUI_ENDPOINT_PRE_MAINNET!
-        : process.env.SUI_ENDPOINT_MAINNET!
+        ? process.env.SUI_GRPC_ENDPOINT_PRE_MAINNET!
+        : process.env.SUI_GRPC_ENDPOINT_MAINNET!
 
     if (!this.endpoint) {
-      throw new Error(`Missing SUI_ENDPOINT_${env.toUpperCase()}`)
+      const envName = env.toUpperCase().replace("-", "_")
+      throw new Error(`Missing SUI_GRPC_ENDPOINT_${envName}`)
     }
 
-    this.client = new SuiClient({ url: this.endpoint })
+    this.client = createSuiGrpcClient(env, this.endpoint)
     this.keypair = this.buildAccount()
     this.walletAddress = this.keypair.getPublicKey().toSuiAddress()
     console.log(
       "Activate wallet address:",
       this.walletAddress,
-      "\nActivate rpc:",
+      "\nActivate gRPC:",
       this.endpoint
     )
   }
@@ -59,58 +73,76 @@ export class SuiScriptClient {
   }
 
   async getAllCoins(): Promise<CoinObject[]> {
-    let cursor = null
-    let limit = 50
+    let cursor: string | null = null
+    const limit = 50
     const allCoins: CoinObject[] = []
+
     while (true) {
-      const gotAllCoins = await this.client.getAllCoins({
-        owner: this.walletAddress,
-        cursor,
-        limit,
-      })
-      for (const coin of gotAllCoins.data) {
-        const coinType = completionCoin(coin.coinType)
+      const page: SuiClientTypes.ListOwnedObjectsResponse<{ json: true }> =
+        await this.client.core.listOwnedObjects({
+          owner: this.walletAddress,
+          cursor,
+          limit,
+          include: { json: true },
+        })
+
+      for (const coin of page.objects) {
+        const rawCoinType = extractCoinType(coin.type)
+        if (!rawCoinType) continue
+        const coinType = completionCoin(rawCoinType)
         allCoins.push({
-          coinType: coinType,
-          objectId: coin.coinObjectId,
-          balance: Number(coin.balance),
+          coinType,
+          objectId: coin.objectId,
+          balance: extractCoinBalance(coin.json),
         })
       }
-      if (!gotAllCoins.hasNextPage) {
+
+      if (!page.hasNextPage) {
         break
       }
-      cursor = gotAllCoins.nextCursor
+
+      if (!page.cursor) {
+        throw new Error("gRPC coin pagination returned no cursor")
+      }
+      cursor = page.cursor
     }
+
     return allCoins
   }
 
   async getCoinsByType(coinType: string): Promise<CoinObject[]> {
     const coins = await this.getAllCoins()
-    return coins.filter((coin) => coin.coinType === coinType)
+    const normalizedCoinType = completionCoin(coinType)
+    return coins.filter((coin) => coin.coinType === normalizedCoinType)
   }
 
   async getCoinsByTypeV2(coinType: string): Promise<CoinObject[]> {
-    let cursor = null
-    let limit = 50
+    let cursor: string | null = null
+    const limit = 50
     const allCoins: CoinObject[] = []
+
     while (true) {
-      const coins = await this.client.getCoins({
+      const page = await this.client.core.listCoins({
         owner: this.walletAddress,
         coinType,
         cursor,
         limit,
       })
-      const coinObjects = coins.data.map((coin) => ({
-        coinType: coin.coinType,
-        objectId: coin.coinObjectId,
+
+      const coinObjects = page.objects.map((coin) => ({
+        coinType,
+        objectId: coin.objectId,
         balance: Number(coin.balance),
       }))
       allCoins.push(...coinObjects)
-      if (!coins.hasNextPage) {
+
+      if (!page.hasNextPage) {
         break
       }
-      cursor = coins.nextCursor
+
+      cursor = page.cursor
     }
+
     return allCoins
   }
 
@@ -162,31 +194,48 @@ export class SuiScriptClient {
   }
 
   async signAndExecuteTransaction(txb: Transaction) {
-    const res = await this.client.signAndExecuteTransaction({
+    const result = await this.client.core.signAndExecuteTransaction({
       transaction: txb,
       signer: this.keypair,
-      options: {
-        showEffects: true,
-        showEvents: true,
-        showInput: true,
-        showBalanceChanges: true,
+      include: {
+        effects: true,
+        events: true,
+        transaction: true,
+        balanceChanges: true,
       },
     })
-    return res
+
+    if (result.FailedTransaction) {
+      throw new Error(
+        result.FailedTransaction.status.error?.message ??
+          "Transaction execution failed"
+      )
+    }
+
+    return result.Transaction
   }
 
   async devInspectTransactionBlock(txb: Transaction) {
-    const res = await this.client.devInspectTransactionBlock({
-      transactionBlock: txb,
-      sender: this.walletAddress,
+    txb.setSenderIfNotSet(this.walletAddress)
+
+    const result = await this.client.core.simulateTransaction({
+      transaction: txb,
+      checksEnabled: false,
+      include: {
+        effects: true,
+        events: true,
+        balanceChanges: true,
+        commandResults: true,
+      },
     })
 
-    return res
+    const transaction = result.Transaction ?? result.FailedTransaction
+    return { ...transaction, commandResults: result.commandResults }
   }
 
   async sendTransaction(txb: Transaction) {
     const devInspectRes = await this.devInspectTransactionBlock(txb)
-    if (devInspectRes.effects.status.status !== "success") {
+    if (!devInspectRes.effects.status.success) {
       console.log("transaction failed")
       console.log(devInspectRes)
       return
@@ -196,6 +245,19 @@ export class SuiScriptClient {
     console.log(txRes)
     return txRes
   }
+}
+
+function extractCoinType(objectType: string): string | null {
+  const match = objectType.match(/::coin::Coin<(.+)>$/)
+  return match?.[1] ?? null
+}
+
+function extractCoinBalance(json: Record<string, unknown> | null): number {
+  const balance = json?.balance
+  if (typeof balance !== "string" && typeof balance !== "number") {
+    throw new Error("gRPC coin response is missing its balance")
+  }
+  return Number(balance)
 }
 
 export async function printTransaction(tx: Transaction, isPrint = true) {

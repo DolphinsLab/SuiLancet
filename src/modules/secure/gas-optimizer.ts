@@ -3,7 +3,7 @@ import { CommandResult } from "../../core/types"
 
 export interface GasInfo {
   referenceGasPrice: number
-  currentEpoch: string
+  latestCheckpoint: string
   recommendedBudget: {
     simple: number
     moderate: number
@@ -20,11 +20,12 @@ export async function getGasInfo(
   const suiClient = client.client
 
   // Get reference gas price for current epoch
-  const refGasPrice = await suiClient.getReferenceGasPrice()
-  const refGasPriceNum = Number(refGasPrice)
+  const { referenceGasPrice } = await suiClient.core.getReferenceGasPrice()
+  const refGasPriceNum = Number(referenceGasPrice)
 
   // Get latest checkpoint for epoch info
-  const checkpoint = await suiClient.getLatestCheckpointSequenceNumber()
+  const { response } = await suiClient.ledgerService.getServiceInfo({})
+  const checkpoint = response.checkpointHeight?.toString() ?? "unknown"
 
   // Calculate recommended budgets based on reference price
   // Simple: transfer, merge (< 5 commands)
@@ -38,7 +39,7 @@ export async function getGasInfo(
 
   const gasInfo: GasInfo = {
     referenceGasPrice: refGasPriceNum,
-    currentEpoch: checkpoint,
+    latestCheckpoint: checkpoint,
     recommendedBudget: recommended,
   }
 

@@ -1,3 +1,4 @@
+import { toBase64 } from "@mysten/bcs"
 import { SuiScriptClient } from "../../core"
 import { CommandResult } from "../../core/types"
 
@@ -24,38 +25,31 @@ export async function inspectObject(
   objectId: string
 ): Promise<CommandResult> {
   try {
-    const obj = await client.client.getObject({
-      id: objectId,
-      options: {
-        showType: true,
-        showOwner: true,
-        showContent: true,
-        showDisplay: true,
+    const { object } = await client.client.core.getObject({
+      objectId,
+      include: {
+        json: true,
+        display: true,
       },
     })
 
-    if (!obj.data) {
-      return { success: false, message: `Object ${objectId} not found` }
-    }
-
-    const data = obj.data
-    const ownerStr = formatOwner(data.owner)
-    const type = data.type ?? "unknown"
+    const ownerStr = formatOwner(object.owner)
+    const type = object.type
 
     console.log(`\n┌─────────────────────────────────────────┐`)
     console.log(`│           Object Inspector               │`)
     console.log(`├─────────────────────────────────────────┤`)
-    console.log(`│ ID:      ${data.objectId}`)
-    console.log(`│ Version: ${data.version}`)
-    console.log(`│ Digest:  ${data.digest}`)
+    console.log(`│ ID:      ${object.objectId}`)
+    console.log(`│ Version: ${object.version}`)
+    console.log(`│ Digest:  ${object.digest}`)
     console.log(`│ Type:    ${shortenType(type)}`)
     console.log(`│ Owner:   ${ownerStr}`)
 
     // Show display data if available
-    if (data.display?.data && Object.keys(data.display.data).length > 0) {
+    if (object.display?.output && Object.keys(object.display.output).length > 0) {
       console.log(`│`)
       console.log(`│ Display:`)
-      for (const [key, value] of Object.entries(data.display.data)) {
+      for (const [key, value] of Object.entries(object.display.output)) {
         if (value) {
           const valStr = String(value).length > 50
             ? `${String(value).slice(0, 47)}...`
@@ -66,9 +60,8 @@ export async function inspectObject(
     }
 
     // Show content fields
-    let content: Record<string, unknown> | null = null
-    if (data.content && data.content.dataType === "moveObject") {
-      content = data.content.fields as Record<string, unknown>
+    const content = object.json
+    if (content) {
       console.log(`│`)
       console.log(`│ Fields:`)
       printFields(content, "│   ")
@@ -77,9 +70,9 @@ export async function inspectObject(
     console.log(`└─────────────────────────────────────────┘`)
 
     const info: ObjectInfo = {
-      objectId: data.objectId,
-      version: data.version,
-      digest: data.digest,
+      objectId: object.objectId,
+      version: object.version,
+      digest: object.digest,
       type,
       owner: ownerStr,
       content,
@@ -114,23 +107,26 @@ export async function listDynamicFields(
   let fetched = 0
 
   while (hasNext && fetched < limit) {
-    const result = await client.client.getDynamicFields({
+    const result = await client.client.core.listDynamicFields({
       parentId: objectId,
-      cursor: cursor ?? undefined,
+      cursor,
       limit: Math.min(50, limit - fetched),
     })
 
-    for (const field of result.data) {
+    for (const field of result.dynamicFields) {
       fields.push({
-        name: field.name,
-        objectId: field.objectId,
-        type: field.objectType ?? "unknown",
+        name: {
+          type: field.name.type,
+          value: toBase64(field.name.bcs),
+        },
+        objectId: field.childId ?? field.fieldId,
+        type: field.valueType,
       })
       fetched++
     }
 
     hasNext = result.hasNextPage
-    cursor = result.nextCursor
+    cursor = result.cursor
   }
 
   console.log(`\nDynamic Fields of ${objectId}:`)

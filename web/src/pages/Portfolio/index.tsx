@@ -1,6 +1,14 @@
 import { useState, useCallback } from 'react'
-import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit'
+import {
+  useCurrentAccount,
+  useCurrentClient,
+} from '@mysten/dapp-kit-react'
+import type {
+  ClientWithCoreApi,
+  SuiClientTypes,
+} from '@mysten/sui/client'
 import { useToast } from '../../components/Toast'
+import { listAllBalances } from '../../lib/balances'
 
 // --- Types ---
 interface LendingAsset {
@@ -101,40 +109,63 @@ function shortenId(id: string): string {
 }
 
 // --- Data Fetching ---
-async function fetchPortfolio(client: any, address: string): Promise<Portfolio> {
+async function fetchPortfolio(
+  client: ClientWithCoreApi,
+  address: string,
+): Promise<Portfolio> {
   const lending: LendingPosition[] = []
   const lp: LPPosition[] = []
   const staking: StakingPosition[] = []
 
   // Scan all owned objects
-  let cursor: string | null | undefined = null
+  let cursor: string | null = null
   let hasNext = true
 
   while (hasNext) {
-    const ownedObjects: any = await client.getOwnedObjects({
-      owner: address,
-      cursor: cursor ?? undefined,
-      options: { showType: true, showContent: true },
-      limit: 50,
-    })
+    const ownedObjects: SuiClientTypes.ListOwnedObjectsResponse<{ json: true }> =
+      await client.core.listOwnedObjects({
+        owner: address,
+        cursor,
+        include: { json: true },
+        limit: 50,
+      })
 
-    for (const obj of ownedObjects.data) {
-      if (!obj.data?.type) continue
-      const typeStr = obj.data.type as string
+    for (const object of ownedObjects.objects) {
+      const typeStr = object.type
+      const objectData = {
+        objectId: object.objectId,
+        type: object.type,
+        content: {
+          dataType: 'moveObject',
+          fields: object.json,
+        },
+      }
 
+      if (typeStr.includes('::staking_pool::StakedSui')) {
+        const amount = Number(object.json?.principal ?? 0)
+        if (amount > 0) {
+          staking.push({
+            protocol: 'Sui Native Staking',
+            objectId: object.objectId,
+            symbol: 'SUI',
+            amount,
+            decimals: 9,
+          })
+        }
+      }
       // NAVI Obligation
-      if (typeStr.includes(NAVI_PACKAGE) && typeStr.includes('::lending::Obligation')) {
-        const pos = parseLendingObligation(obj.data, 'NAVI Protocol')
+      else if (typeStr.includes(NAVI_PACKAGE) && typeStr.includes('::lending::Obligation')) {
+        const pos = parseLendingObligation(objectData, 'NAVI Protocol')
         if (pos) lending.push(pos)
       }
       // Suilend Obligation
       else if (typeStr.includes(SUILEND_PACKAGE) && typeStr.includes('::obligation::Obligation')) {
-        const pos = parseLendingObligation(obj.data, 'Suilend')
+        const pos = parseLendingObligation(objectData, 'Suilend')
         if (pos) lending.push(pos)
       }
       // Scallop Obligation
       else if (typeStr.includes(SCALLOP_PACKAGE) && typeStr.includes('::obligation::Obligation')) {
-        const pos = parseLendingObligation(obj.data, 'Scallop')
+        const pos = parseLendingObligation(objectData, 'Scallop')
         if (pos) lending.push(pos)
       }
       // Cetus Position
@@ -142,28 +173,31 @@ async function fetchPortfolio(client: any, address: string): Promise<Portfolio> 
         (typeStr.includes(CETUS_PACKAGE) || typeStr.includes(CETUS_CLMM)) &&
         typeStr.includes('::position::Position')
       ) {
-        const pos = parseLPPosition(obj.data, 'Cetus')
+        const pos = parseLPPosition(objectData, 'Cetus')
         if (pos) lp.push(pos)
       }
       // Turbos Position
       else if (typeStr.includes(TURBOS_PACKAGE) && typeStr.includes('::position_nft::')) {
-        const pos = parseLPPosition(obj.data, 'Turbos Finance')
+        const pos = parseLPPosition(objectData, 'Turbos Finance')
         if (pos) lp.push(pos)
       }
     }
 
     hasNext = ownedObjects.hasNextPage
-    cursor = ownedObjects.nextCursor
+    if (hasNext && !ownedObjects.cursor) {
+      throw new Error('gRPC object pagination returned no cursor')
+    }
+    cursor = ownedObjects.cursor
   }
 
   // Fetch LST balances
-  const allBalances = await client.getAllBalances({ owner: address })
+  const allBalances = await listAllBalances(client, address)
   for (const balance of allBalances) {
     const lstKey = Object.keys(LST_TOKENS).find(
       (key) => balance.coinType.toLowerCase() === key.toLowerCase()
     )
     if (lstKey) {
-      const amount = Number(balance.totalBalance)
+      const amount = Number(balance.balance)
       if (amount > 0) {
         staking.push({
           protocol: LST_TOKENS[lstKey].protocol,
@@ -173,27 +207,6 @@ async function fetchPortfolio(client: any, address: string): Promise<Portfolio> 
         })
       }
     }
-  }
-
-  // Fetch native staking
-  try {
-    const stakes = await client.getStakes({ owner: address })
-    for (const validatorStake of stakes) {
-      for (const stake of validatorStake.stakes) {
-        const amount = Number(stake.principal)
-        if (amount > 0) {
-          staking.push({
-            protocol: 'Sui Native Staking',
-            objectId: stake.stakedSuiId,
-            symbol: 'SUI',
-            amount,
-            decimals: 9,
-          })
-        }
-      }
-    }
-  } catch {
-    // Native staking may not be available on all networks
   }
 
   return { lending, lp, staking }
@@ -276,7 +289,7 @@ function parseLPPosition(objectData: any, protocol: string): LPPosition | null {
 // --- Component ---
 export default function Portfolio() {
   const account = useCurrentAccount()
-  const client = useSuiClient()
+  const client = useCurrentClient()
   const toast = useToast()
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null)
   const [isLoading, setIsLoading] = useState(false)

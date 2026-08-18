@@ -1,4 +1,5 @@
 import { ObjectRef } from "@mysten/sui/transactions"
+import { normalizeStructTag } from "@mysten/sui/utils"
 import { SuiScriptClient } from "../core/client"
 
 const SUI_COIN_TYPE =
@@ -8,21 +9,14 @@ export async function getObjectRef(
   client: SuiScriptClient,
   objectId: string
 ): Promise<ObjectRef> {
-  const object = await client.client.getObject({
-    id: objectId,
-    options: {
-      showContent: true,
-    },
+  const { object } = await client.client.core.getObject({
+    objectId,
   })
 
-  if (!object.data) {
-    throw new Error(`Object not found, objectId: ${objectId}`)
-  }
-
   return {
-    objectId: object.data?.objectId,
-    version: object.data?.version,
-    digest: object.data?.digest,
+    objectId: object.objectId,
+    version: object.version,
+    digest: object.digest,
   }
 }
 
@@ -44,28 +38,20 @@ export async function validateGasCoin(
     )
   }
 
-  const object = await client.client.getObject({
-    id: gasObjectId,
-    options: {
-      showType: true,
-      showContent: true,
-    },
+  const { object } = await client.client.core.getObject({
+    objectId: gasObjectId,
   })
 
-  if (!object.data) {
-    throw new Error(`Gas object not found: ${gasObjectId}`)
-  }
-
-  if (object.data.type !== SUI_COIN_TYPE) {
+  if (normalizeStructTag(object.type) !== SUI_COIN_TYPE) {
     throw new Error(
-      `Object ${gasObjectId} is not a SUI coin (type: ${object.data.type}). ` +
+      `Object ${gasObjectId} is not a SUI coin (type: ${object.type}). ` +
         `Only SUI coins can be used as gas payment.`
     )
   }
 
   return {
-    objectId: object.data.objectId,
-    version: object.data.version,
-    digest: object.data.digest,
+    objectId: object.objectId,
+    version: object.version,
+    digest: object.digest,
   }
 }

@@ -1,3 +1,4 @@
+import type { SuiClientTypes } from "@mysten/sui/client"
 import { SuiScriptClient } from "../../core"
 import { CommandResult } from "../../core/types"
 
@@ -10,91 +11,112 @@ export interface ParsedTransaction {
   success: boolean
 }
 
+async function loadTransactionTimestamps(
+  client: SuiScriptClient,
+  digests: string[]
+): Promise<Map<string, number>> {
+  const timestamps = new Map<string, number>()
+
+  for (let index = 0; index < digests.length; index += 50) {
+    const batch = digests.slice(index, index + 50)
+    const { response } =
+      await client.client.ledgerService.batchGetTransactions({
+        digests: batch,
+        readMask: { paths: ["digest", "timestamp"] },
+      })
+
+    for (const result of response.transactions) {
+      if (result.result.oneofKind !== "transaction") continue
+
+      const transaction = result.result.transaction
+      const timestamp = transaction.timestamp
+      if (!transaction.digest || !timestamp) continue
+
+      timestamps.set(
+        transaction.digest,
+        Number(timestamp.seconds) * 1_000 +
+          Math.floor(timestamp.nanos / 1_000_000)
+      )
+    }
+  }
+
+  return timestamps
+}
+
 /**
  * Classify a transaction based on its Move calls and effects.
  */
-function classifyTransaction(tx: Record<string, unknown>): {
+function classifyTransaction(tx: SuiClientTypes.TransactionData | undefined): {
   type: string
   description: string
 } {
-  const transaction = tx.transaction as Record<string, unknown> | undefined
-  const data = transaction?.data as Record<string, unknown> | undefined
-  const txData = data?.transaction as Record<string, unknown> | undefined
-
-  if (!txData) {
+  if (!tx) {
     return { type: "Unknown", description: "Unable to parse transaction" }
   }
 
-  const kind = txData.kind as string | undefined
+  const commands = tx.commands
+  if (commands.length === 0) {
+    return { type: "Empty", description: "Empty transaction" }
+  }
 
-  if (kind === "ProgrammableTransaction") {
-    const transactions = (txData as Record<string, unknown>).transactions as Array<Record<string, unknown>> | undefined
-    if (!transactions || transactions.length === 0) {
-      return { type: "Empty", description: "Empty transaction block" }
+  const moveCallTargets: string[] = []
+  let hasTransfer = false
+  let hasMerge = false
+  let hasSplit = false
+
+  for (const command of commands) {
+    if ("MoveCall" in command) {
+      const moveCall = command.MoveCall
+      moveCallTargets.push(
+        `${moveCall.package}::${moveCall.module}::${moveCall.function}`
+      )
     }
+    if ("TransferObjects" in command) hasTransfer = true
+    if ("MergeCoins" in command) hasMerge = true
+    if ("SplitCoins" in command) hasSplit = true
+  }
 
-    // Analyze commands to determine type
-    const moveCallTargets: string[] = []
-    let hasTransfer = false
-    let hasMerge = false
-    let hasSplit = false
-
-    for (const cmd of transactions) {
-      if ("MoveCall" in cmd) {
-        const moveCall = cmd.MoveCall as Record<string, unknown>
-        const target = `${moveCall.package}::${moveCall.module}::${moveCall.function}`
-        moveCallTargets.push(target)
-      }
-      if ("TransferObjects" in cmd) hasTransfer = true
-      if ("MergeCoins" in cmd) hasMerge = true
-      if ("SplitCoins" in cmd) hasSplit = true
+  if (moveCallTargets.length === 0) {
+    if (hasTransfer && !hasSplit && !hasMerge) {
+      return { type: "Transfer", description: "Token/object transfer" }
     }
-
-    // Classify based on patterns
-    if (moveCallTargets.length === 0) {
-      if (hasTransfer && !hasSplit && !hasMerge) {
-        return { type: "Transfer", description: "Token/object transfer" }
-      }
-      if (hasMerge) {
-        return { type: "Merge", description: "Coin merge operation" }
-      }
-      if (hasSplit && hasTransfer) {
-        return { type: "Split & Transfer", description: "Split and transfer coins" }
-      }
-      if (hasSplit) {
-        return { type: "Split", description: "Coin split operation" }
-      }
+    if (hasMerge) {
+      return { type: "Merge", description: "Coin merge operation" }
     }
-
-    // Check for known protocol patterns
-    for (const target of moveCallTargets) {
-      if (target.includes("::swap") || target.includes("::router")) {
-        return { type: "Swap", description: `DEX swap via ${extractModule(target)}` }
-      }
-      if (target.includes("::mint") || target.includes("::create")) {
-        return { type: "Mint", description: `Mint/Create via ${extractModule(target)}` }
-      }
-      if (target.includes("::stake") || target.includes("::add_stake")) {
-        return { type: "Stake", description: `Staking via ${extractModule(target)}` }
-      }
-      if (target.includes("::kiosk")) {
-        return { type: "Kiosk", description: `Kiosk operation via ${extractModule(target)}` }
-      }
-      if (target.includes("::claim")) {
-        return { type: "Claim", description: `Claim rewards via ${extractModule(target)}` }
-      }
+    if (hasSplit && hasTransfer) {
+      return { type: "Split & Transfer", description: "Split and transfer coins" }
     }
-
-    if (moveCallTargets.length > 0) {
-      const module = extractModule(moveCallTargets[0])
-      return {
-        type: "Contract Call",
-        description: `${transactions.length} commands via ${module}`,
-      }
+    if (hasSplit) {
+      return { type: "Split", description: "Coin split operation" }
     }
   }
 
-  return { type: "Other", description: kind ?? "Unknown transaction kind" }
+  for (const target of moveCallTargets) {
+    if (target.includes("::swap") || target.includes("::router")) {
+      return { type: "Swap", description: `DEX swap via ${extractModule(target)}` }
+    }
+    if (target.includes("::mint") || target.includes("::create")) {
+      return { type: "Mint", description: `Mint/Create via ${extractModule(target)}` }
+    }
+    if (target.includes("::stake") || target.includes("::add_stake")) {
+      return { type: "Stake", description: `Staking via ${extractModule(target)}` }
+    }
+    if (target.includes("::kiosk")) {
+      return { type: "Kiosk", description: `Kiosk operation via ${extractModule(target)}` }
+    }
+    if (target.includes("::claim")) {
+      return { type: "Claim", description: `Claim rewards via ${extractModule(target)}` }
+    }
+  }
+
+  if (moveCallTargets.length > 0) {
+    return {
+      type: "Contract Call",
+      description: `${commands.length} commands via ${extractModule(moveCallTargets[0])}`,
+    }
+  }
+
+  return { type: "Other", description: "Programmable transaction" }
 }
 
 function extractModule(target: string): string {
@@ -115,36 +137,59 @@ export async function getTransactionHistory(
   const limit = options.limit ?? 20
   const address = client.walletAddress
 
-  const txBlocks = await client.client.queryTransactionBlocks({
-    filter: { FromAddress: address },
-    options: {
-      showEffects: true,
-      showInput: true,
-    },
-    limit,
-    order: "descending",
-  })
-
   const parsed: ParsedTransaction[] = []
+  let before: string | null = null
 
-  for (const tx of txBlocks.data) {
-    const effects = tx.effects
-    const isSuccess = effects?.status?.status === "success"
-    const gasUsed =
-      Number(effects?.gasUsed?.computationCost ?? 0) +
-      Number(effects?.gasUsed?.storageCost ?? 0) -
-      Number(effects?.gasUsed?.storageRebate ?? 0)
-
-    const { type, description } = classifyTransaction(tx as unknown as Record<string, unknown>)
-
-    parsed.push({
-      digest: tx.digest,
-      timestamp: tx.timestampMs ? Number(tx.timestampMs) : null,
-      type,
-      description,
-      gasUsed,
-      success: isSuccess,
+  while (parsed.length < limit) {
+    const page: SuiClientTypes.ListTransactionsResponse<{
+      effects: true
+      transaction: true
+    }> = await client.client.core.listTransactions({
+      filter: { sender: address },
+      include: {
+        effects: true,
+        transaction: true,
+      },
+      limit: limit - parsed.length,
+      before,
+      order: "descending",
     })
+
+    for (const result of page.transactions) {
+      const tx =
+        result.$kind === "Transaction"
+          ? result.Transaction
+          : result.FailedTransaction
+      const effects = tx.effects
+      const gasUsed =
+        Number(effects.gasUsed.computationCost) +
+        Number(effects.gasUsed.storageCost) -
+        Number(effects.gasUsed.storageRebate)
+      const { type, description } = classifyTransaction(tx.transaction)
+
+      parsed.push({
+        digest: tx.digest,
+        timestamp: null,
+        type,
+        description,
+        gasUsed,
+        success: tx.status.success,
+      })
+    }
+
+    if (!page.hasNextPage) break
+    if (!page.endCursor) {
+      throw new Error("gRPC transaction pagination returned no cursor")
+    }
+    before = page.endCursor
+  }
+
+  const timestamps = await loadTransactionTimestamps(
+    client,
+    parsed.map((transaction) => transaction.digest)
+  )
+  for (const transaction of parsed) {
+    transaction.timestamp = timestamps.get(transaction.digest) ?? null
   }
 
   // Format output
@@ -178,35 +223,33 @@ export async function parseTransaction(
   digest: string
 ): Promise<CommandResult> {
   try {
-    const tx = await client.client.getTransactionBlock({
+    const result = await client.client.core.getTransaction({
       digest,
-      options: {
-        showEffects: true,
-        showInput: true,
-        showEvents: true,
-        showObjectChanges: true,
-        showBalanceChanges: true,
+      include: {
+        effects: true,
+        transaction: true,
+        events: true,
+        balanceChanges: true,
+        objectTypes: true,
       },
     })
+    const tx =
+      result.$kind === "Transaction"
+        ? result.Transaction
+        : result.FailedTransaction
 
     const effects = tx.effects
-    const isSuccess = effects?.status?.status === "success"
+    const isSuccess = tx.status.success
 
     console.log(`\nTransaction: ${digest}`)
     console.log(`Status: ${isSuccess ? "SUCCESS" : "FAILED"}`)
 
-    if (tx.timestampMs) {
-      console.log(`Time: ${new Date(Number(tx.timestampMs)).toLocaleString()}`)
-    }
-
     // Gas
-    if (effects?.gasUsed) {
-      const net =
-        Number(effects.gasUsed.computationCost) +
-        Number(effects.gasUsed.storageCost) -
-        Number(effects.gasUsed.storageRebate)
-      console.log(`Gas: ${(net / 1_000_000_000).toFixed(6)} SUI`)
-    }
+    const net =
+      Number(effects.gasUsed.computationCost) +
+      Number(effects.gasUsed.storageCost) -
+      Number(effects.gasUsed.storageRebate)
+    console.log(`Gas: ${(net / 1_000_000_000).toFixed(6)} SUI`)
 
     // Balance changes
     if (tx.balanceChanges && tx.balanceChanges.length > 0) {
@@ -220,10 +263,18 @@ export async function parseTransaction(
     }
 
     // Object changes
-    if (tx.objectChanges && tx.objectChanges.length > 0) {
-      const created = tx.objectChanges.filter((o) => o.type === "created")
-      const deleted = tx.objectChanges.filter((o) => o.type === "deleted")
-      const mutated = tx.objectChanges.filter((o) => o.type === "mutated")
+    if (effects.changedObjects.length > 0) {
+      const created = effects.changedObjects.filter(
+        (object) => object.idOperation === "Created"
+      )
+      const deleted = effects.changedObjects.filter(
+        (object) => object.idOperation === "Deleted"
+      )
+      const mutated = effects.changedObjects.filter(
+        (object) =>
+          object.idOperation === "None" &&
+          object.outputState !== "DoesNotExist"
+      )
 
       console.log(`\nObject Changes:`)
       if (created.length > 0) console.log(`  Created: ${created.length}`)
@@ -235,7 +286,7 @@ export async function parseTransaction(
     if (tx.events && tx.events.length > 0) {
       console.log(`\nEvents (${tx.events.length}):`)
       for (const event of tx.events.slice(0, 5)) {
-        const shortType = event.type.split("::").slice(-2).join("::")
+        const shortType = event.eventType.split("::").slice(-2).join("::")
         console.log(`  ${shortType}`)
       }
       if (tx.events.length > 5) {

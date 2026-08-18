@@ -95,8 +95,8 @@ The central class for all Sui blockchain interactions.
 
 ```typescript
 class SuiScriptClient {
-  endpoint: string           // RPC endpoint URL
-  client: SuiClient         // @mysten/sui client
+  endpoint: string           // gRPC endpoint URL
+  client: SuiGrpcClient     // @mysten/sui gRPC client
   walletAddress: string     // Active wallet address
 
   constructor(env: "testnet" | "pre-mainnet" | "mainnet")
