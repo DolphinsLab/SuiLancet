@@ -4,7 +4,8 @@ export default defineConfig([
   // Library build config
   {
     entry: ["src/index.ts"],
-    format: ["cjs", "esm"],
+    format: ["esm"],
+    target: "node22",
     dts: true,
     splitting: false,
     sourcemap: true,
@@ -13,8 +14,8 @@ export default defineConfig([
   // CLI build config
   {
     entry: ["src/cli/index.ts"],
-    format: ["cjs"],
-    target: "node18",
+    format: ["esm"],
+    target: "node22",
     splitting: false,
     sourcemap: false,
     clean: false,

@@ -30,8 +30,8 @@ const client = new SuiScriptClient('mainnet')
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `endpoint` | string | RPC endpoint URL |
-| `client` | SuiClient | Underlying Sui client |
+| `endpoint` | string | gRPC endpoint URL |
+| `client` | SuiGrpcClient | Underlying Sui gRPC client |
 | `walletAddress` | string | Active wallet address |
 
 ---
@@ -386,7 +386,7 @@ console.log(config.globalConfig)
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| `Missing SUI_ENDPOINT_*` | Environment not configured | Add endpoint to `.env` |
+| `Missing SUI_GRPC_ENDPOINT_*` | Environment not configured | Add gRPC endpoint to `.env` |
 | `No wallet secret or phrase found` | Wallet not configured | Add credentials to `.env` |
 | `Insufficient balance` | Not enough coins | Ensure adequate balance |
 | `No coins provided` | Empty coin array | Check coin type filter |

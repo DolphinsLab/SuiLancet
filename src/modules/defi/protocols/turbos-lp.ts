@@ -1,55 +1,36 @@
-import { SuiClient } from "@mysten/sui/client"
+import type { ClientWithCoreApi } from "@mysten/sui/client"
 import { LPPosition, LPToken } from "../types"
 import { TURBOS } from "../constants"
+import { listOwnedMoveObjects } from "../owned-objects"
 
 /**
  * Turbos Finance LP position adapter.
  * Scans wallet for TurbosPositionNFT objects.
  */
 export async function fetchTurbosPositions(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string
 ): Promise<LPPosition[]> {
   const positions: LPPosition[] = []
 
-  let cursor: string | null | undefined = null
-  let hasNext = true
-
-  while (hasNext) {
-    const ownedObjects = await client.getOwnedObjects({
-      owner: walletAddress,
-      cursor: cursor ?? undefined,
-      options: { showType: true, showContent: true },
-      limit: 50,
-    })
-
-    for (const obj of ownedObjects.data) {
-      if (!obj.data?.type) continue
-
-      const typeStr = obj.data.type
+  for (const object of await listOwnedMoveObjects(client, walletAddress)) {
+      const typeStr = object.type
       if (
         typeStr.includes(TURBOS.PACKAGE) &&
         typeStr.includes(TURBOS.POSITION_TYPE_PATTERN)
       ) {
-        const position = parseTurbosPosition(obj.data)
+        const position = parseTurbosPosition(object)
         if (position) {
           positions.push(position)
         }
       }
-    }
-
-    hasNext = ownedObjects.hasNextPage
-    cursor = ownedObjects.nextCursor
   }
 
   return positions
 }
 
 function parseTurbosPosition(objectData: any): LPPosition | null {
-  const content = objectData.content
-  if (!content || content.dataType !== "moveObject") return null
-
-  const fields = content.fields as any
+  const fields = objectData.fields as any
   if (!fields) return null
 
   // Extract type parameters

@@ -125,8 +125,9 @@ export async function scanAirdrops(
 
   for (const coinType of coinTypes) {
     try {
-      const metadata = await client.client.getCoinMetadata({ coinType })
-      metadataMap.set(coinType, metadata !== null)
+      const { coinMetadata } =
+        await client.client.core.getCoinMetadata({ coinType })
+      metadataMap.set(coinType, coinMetadata !== null)
     } catch {
       metadataMap.set(coinType, false)
     }
@@ -259,7 +260,7 @@ export async function destroyAirdrops(
 
     try {
       const devInspectRes = await client.devInspectTransactionBlock(tx)
-      if (devInspectRes.effects.status.status !== "success") {
+      if (!devInspectRes.effects.status.success) {
         console.log(`Batch ${Math.floor(i / batchSize) + 1} simulation failed, skipping`)
         continue
       }

@@ -1,19 +1,32 @@
-import { useCurrentAccount, useSuiClientQuery } from '@mysten/dapp-kit'
+import { useQuery } from '@tanstack/react-query'
+import {
+  useCurrentAccount,
+  useCurrentClient,
+  useCurrentNetwork,
+} from '@mysten/dapp-kit-react'
+import { listAllBalances } from '../../lib/balances'
 
 export default function Dashboard() {
   const account = useCurrentAccount()
+  const client = useCurrentClient()
+  const network = useCurrentNetwork()
 
-  const { data: balance, isLoading } = useSuiClientQuery(
-    'getBalance',
-    { owner: account?.address ?? '' },
-    { enabled: !!account }
-  )
+  const { data: balance, isLoading } = useQuery({
+    queryKey: ['balance', network, account?.address],
+    queryFn: async () =>
+      (
+        await client.core.getBalance({
+          owner: account!.address,
+        })
+      ).balance,
+    enabled: !!account,
+  })
 
-  const { data: allBalances } = useSuiClientQuery(
-    'getAllBalances',
-    { owner: account?.address ?? '' },
-    { enabled: !!account }
-  )
+  const { data: allBalances } = useQuery({
+    queryKey: ['balances', network, account?.address],
+    queryFn: async () => listAllBalances(client, account!.address),
+    enabled: !!account,
+  })
 
   if (!account) {
     return (
@@ -51,7 +64,7 @@ export default function Dashboard() {
           <div className="text-gray-400">Loading...</div>
         ) : (
           <div className="text-3xl font-bold text-sui-400">
-            {balance ? (Number(balance.totalBalance) / 1e9).toFixed(4) : '0'} SUI
+            {balance ? (Number(balance.balance) / 1e9).toFixed(4) : '0'} SUI
           </div>
         )}
       </div>
@@ -63,7 +76,7 @@ export default function Dashboard() {
           <div className="space-y-3">
             {allBalances.map((token, index) => {
               const coinType = token.coinType.split('::').pop() || token.coinType
-              const balance = Number(token.totalBalance) / 1e9
+              const balance = Number(token.balance) / 1e9
               return (
                 <div key={index} className="flex justify-between items-center py-2 border-b border-slate-700 last:border-0">
                   <span className="text-gray-300">{coinType}</span>

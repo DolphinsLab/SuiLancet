@@ -266,7 +266,7 @@ npm run cli -- query wallet-info
 **Output:**
 ```
 Wallet address: 0x1234...abcd
-RPC endpoint: https://fullnode.mainnet.sui.io:443
+gRPC endpoint: https://fullnode.mainnet.sui.io:443
 ```
 
 ---
@@ -337,7 +337,7 @@ npm run cli -- -e testnet coin merge -t "0x2::sui::SUI"
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| `Missing SUI_ENDPOINT_*` | Missing env var | Add to `.env` |
+| `Missing SUI_GRPC_ENDPOINT_*` | Missing env var | Add to `.env` |
 | `No wallet secret or phrase found` | Missing wallet config | Add `SUI_WALLET_SECRET` or `SUI_WALLET_PHRASE` |
 | `Insufficient balance` | Not enough funds | Check balance first |
 | `Transaction failed` | Simulation failure | Check error details |

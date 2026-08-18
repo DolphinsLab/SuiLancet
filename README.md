@@ -17,7 +17,7 @@ A lightweight personal tool for managing multiple Sui wallets and backend servic
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - pnpm or npm
 
 ### Installation
@@ -37,9 +37,9 @@ cp .env.example .env
 ### Environment Variables
 
 ```bash
-# RPC Endpoints
-SUI_ENDPOINT_TESTNET=https://fullnode.testnet.sui.io
-SUI_ENDPOINT_MAINNET=https://fullnode.mainnet.sui.io
+# gRPC Endpoints
+SUI_GRPC_ENDPOINT_TESTNET=https://fullnode.testnet.sui.io:443
+SUI_GRPC_ENDPOINT_MAINNET=https://fullnode.mainnet.sui.io:443
 
 # Wallet Configuration (choose one)
 SUI_WALLET_SECRET=<base64-encoded-secret>
@@ -126,6 +126,9 @@ npm run dev
 Optional Dolphin ID endpoints can be configured in `web/.env`:
 
 ```bash
+VITE_SUI_GRPC_MAINNET=https://fullnode.mainnet.sui.io:443
+VITE_SUI_GRPC_TESTNET=https://fullnode.testnet.sui.io:443
+VITE_SUI_GRPC_DEVNET=https://fullnode.devnet.sui.io:443
 VITE_DOLPHIN_ID_NONCE_URL=/auth/nonce
 VITE_DOLPHIN_ID_VERIFY_URL=/auth/verify
 VITE_DOLPHIN_ID_REFRESH_URL=/auth/refresh
@@ -140,10 +143,10 @@ See [Deployment Guide](docs/DEPLOYMENT.md) for Cloudflare Pages setup.
 ## Tech Stack
 
 - **Blockchain**: Sui Network
-- **SDK**: @mysten/sui
+- **SDK**: @mysten/sui 2.x with `SuiGrpcClient` and Core API
 - **CLI**: Commander.js
 - **Web**: React 18 + Vite + TypeScript
-- **Wallet**: @mysten/dapp-kit
+- **Wallet**: @mysten/dapp-kit-react
 - **Styling**: TailwindCSS
 
 ## Security

@@ -53,7 +53,7 @@ SuiLancet is a lightweight personal tool for managing multiple Sui wallets and i
 | Language | TypeScript |
 | SDK | @mysten/sui |
 | Web Framework | React 18 + Vite |
-| Wallet Integration | @mysten/dapp-kit |
+| Wallet Integration | @mysten/dapp-kit-react |
 | Styling | TailwindCSS |
 | Deployment | Cloudflare Pages |
 
@@ -71,7 +71,7 @@ npm install
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your RPC endpoints and wallet
+# Edit .env with your gRPC endpoints and wallet
 
 # Run CLI
 npm run cli -- --help

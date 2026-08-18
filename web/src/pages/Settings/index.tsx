@@ -1,16 +1,18 @@
-import { useState } from 'react'
-import { useCurrentAccount, useSuiClientContext } from '@mysten/dapp-kit'
+import {
+  useCurrentAccount,
+  useCurrentNetwork,
+  useDAppKit,
+} from '@mysten/dapp-kit-react'
 import { useDolphinId } from '../../components/DolphinIdProvider'
 import { useToast } from '../../components/Toast'
-
-type Network = 'mainnet' | 'testnet' | 'devnet'
+import { SUI_NETWORKS } from '../../lib/sui-dapp'
 
 export default function Settings() {
-  const { selectNetwork, network } = useSuiClientContext()
+  const dAppKit = useDAppKit()
+  const network = useCurrentNetwork()
   const account = useCurrentAccount()
   const dolphinId = useDolphinId()
   const toast = useToast()
-  const [rpcEndpoint, setRpcEndpoint] = useState('')
 
   const handleDolphinSignIn = async () => {
     try {
@@ -34,10 +36,10 @@ export default function Settings() {
       <div className="card">
         <h2 className="text-lg font-semibold text-white mb-4">Network</h2>
         <div className="flex space-x-2">
-          {(['mainnet', 'testnet', 'devnet'] as Network[]).map((net) => (
+          {SUI_NETWORKS.map((net) => (
             <button
               key={net}
-              onClick={() => selectNetwork(net)}
+              onClick={() => dAppKit.switchNetwork(net)}
               className={`px-6 py-3 rounded-lg font-medium capitalize ${
                 network === net
                   ? 'bg-sui-600 text-white'
@@ -53,26 +55,26 @@ export default function Settings() {
         </p>
       </div>
 
-      {/* Custom RPC */}
+      {/* Custom gRPC */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-4">Custom RPC Endpoint</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">Custom gRPC Endpoint</h2>
         <div className="space-y-4">
           <input
             type="text"
-            value={rpcEndpoint}
-            onChange={(e) => setRpcEndpoint(e.target.value)}
-            placeholder="https://..."
+            value="Configured at build time"
+            readOnly
+            disabled
             className="input w-full"
           />
           <button
-            disabled={!rpcEndpoint}
+            disabled
             className="btn-secondary disabled:opacity-50"
           >
-            Set Custom RPC
+            Set Custom gRPC
           </button>
         </div>
         <p className="text-gray-400 text-sm mt-4">
-          * Custom RPC support coming soon
+          * Custom gRPC support coming soon
         </p>
       </div>
 
@@ -153,7 +155,7 @@ export default function Settings() {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">SDK Version</span>
-            <span className="text-white">@mysten/sui ^1.6.0</span>
+            <span className="text-white">@mysten/sui 2.23.1 (gRPC)</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">GitHub</span>

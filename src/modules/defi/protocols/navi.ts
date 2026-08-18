@@ -1,56 +1,36 @@
-import { SuiClient } from "@mysten/sui/client"
+import type { ClientWithCoreApi } from "@mysten/sui/client"
 import { LendingPosition, LendingAsset } from "../types"
 import { NAVI } from "../constants"
+import { listOwnedMoveObjects } from "../owned-objects"
 
 /**
  * NAVI Protocol position adapter.
  * Scans wallet for Obligation objects and parses deposit/borrow positions.
  */
 export async function fetchNaviPositions(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string
 ): Promise<LendingPosition[]> {
   const positions: LendingPosition[] = []
 
-  // Find all obligation objects owned by this wallet
-  let cursor: string | null | undefined = null
-  let hasNext = true
-
-  while (hasNext) {
-    const ownedObjects = await client.getOwnedObjects({
-      owner: walletAddress,
-      cursor: cursor ?? undefined,
-      options: { showType: true, showContent: true },
-      limit: 50,
-    })
-
-    for (const obj of ownedObjects.data) {
-      if (!obj.data?.type) continue
-
+  for (const object of await listOwnedMoveObjects(client, walletAddress)) {
       // Match NAVI obligation objects
       if (
-        obj.data.type.includes(NAVI.PACKAGE) &&
-        obj.data.type.includes(NAVI.OBLIGATION_TYPE_PATTERN)
+        object.type.includes(NAVI.PACKAGE) &&
+        object.type.includes(NAVI.OBLIGATION_TYPE_PATTERN)
       ) {
-        const position = parseNaviObligation(obj.data)
+        const position = parseNaviObligation(object)
         if (position) {
           positions.push(position)
         }
       }
-    }
-
-    hasNext = ownedObjects.hasNextPage
-    cursor = ownedObjects.nextCursor
   }
 
   return positions
 }
 
 function parseNaviObligation(objectData: any): LendingPosition | null {
-  const content = objectData.content
-  if (!content || content.dataType !== "moveObject") return null
-
-  const fields = content.fields as any
+  const fields = objectData.fields as any
   if (!fields) return null
 
   const deposits: LendingAsset[] = []

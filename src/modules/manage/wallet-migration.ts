@@ -1,3 +1,4 @@
+import type { SuiClientTypes } from "@mysten/sui/client"
 import { Transaction } from "@mysten/sui/transactions"
 import { SuiScriptClient } from "../../core"
 import { CoinObject, CommandResult } from "../../core/types"
@@ -57,31 +58,32 @@ async function scanAssets(client: SuiScriptClient): Promise<{
 
   // Get all owned objects (non-coin)
   const objects: OwnedObject[] = []
-  let cursor: string | null | undefined = undefined
-  let hasNext = true
+  let cursor: string | null = null
 
-  while (hasNext) {
-    const result = await client.client.getOwnedObjects({
+  while (true) {
+    const result: SuiClientTypes.ListOwnedObjectsResponse =
+      await client.client.core.listOwnedObjects({
       owner: address,
-      options: { showType: true },
-      cursor: cursor ?? undefined,
+      cursor,
       limit: 50,
-    })
+      })
 
-    for (const obj of result.data) {
-      if (!obj.data) continue
-      const type = obj.data.type ?? ""
+    for (const object of result.objects) {
+      const type = object.type
       // Skip coin objects (already covered above)
-      if (type.startsWith("0x2::coin::Coin<")) continue
+      if (type.includes("::coin::Coin<")) continue
       objects.push({
-        objectId: obj.data.objectId,
+        objectId: object.objectId,
         type,
-        version: obj.data.version,
+        version: object.version,
       })
     }
 
-    hasNext = result.hasNextPage
-    cursor = result.nextCursor
+    if (!result.hasNextPage) break
+    if (!result.cursor) {
+      throw new Error("gRPC object pagination returned no cursor")
+    }
+    cursor = result.cursor
   }
 
   return { coins, objects }

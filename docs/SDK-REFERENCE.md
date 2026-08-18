@@ -67,8 +67,8 @@ Main client class encapsulating Sui network interactions.
 
 ```typescript
 class SuiScriptClient {
-  endpoint: string           // RPC endpoint
-  client: SuiClient         // Sui client instance
+  endpoint: string           // gRPC endpoint
+  client: SuiGrpcClient     // Sui gRPC client instance
   walletAddress: string     // Wallet address
 
   constructor(env: "testnet" | "pre-mainnet" | "mainnet")
@@ -82,7 +82,7 @@ class SuiScriptClient {
 | `env` | `"testnet" \| "pre-mainnet" \| "mainnet"` | Network environment |
 
 **Required Environment Variables**:
-- `SUI_ENDPOINT_TESTNET` / `SUI_ENDPOINT_PRE_MAINNET` / `SUI_ENDPOINT_MAINNET`
+- `SUI_GRPC_ENDPOINT_TESTNET` / `SUI_GRPC_ENDPOINT_PRE_MAINNET` / `SUI_GRPC_ENDPOINT_MAINNET`
 - `SUI_WALLET_SECRET` or `SUI_WALLET_PHRASE`
 
 #### Methods
@@ -93,9 +93,9 @@ class SuiScriptClient {
 | `getCoinsByType(coinType)` | `Promise<CoinObject[]>` | Get coins by type |
 | `getCoinsByTypeV2(coinType)` | `Promise<CoinObject[]>` | Get coins by type (optimized) |
 | `buildInputCoin(coins, amount, txb)` | `Promise<TransactionObjectArgument>` | Build input coin for specified amount |
-| `signAndExecuteTransaction(txb)` | `Promise<SuiTransactionBlockResponse>` | Sign and execute transaction |
-| `devInspectTransactionBlock(txb)` | `Promise<DevInspectResults>` | Simulate transaction execution |
-| `sendTransaction(txb)` | `Promise<SuiTransactionBlockResponse>` | Send transaction (with simulation check) |
+| `signAndExecuteTransaction(txb)` | `Promise<SuiClientTypes.Transaction>` | Sign and execute through gRPC |
+| `devInspectTransactionBlock(txb)` | `Promise<SuiClientTypes.Transaction>` | Simulate through the Core API |
+| `sendTransaction(txb)` | `Promise<SuiClientTypes.Transaction>` | Simulate, then execute through gRPC |
 
 ---
 
@@ -721,7 +721,7 @@ interface SimulationResult {
 }
 
 async function simulateTransaction(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   txBase64: string,
   sender: string
 ): Promise<SimulationResult>
@@ -731,7 +731,7 @@ async function simulateTransaction(
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `client` | `SuiClient` | Sui client instance |
+| `client` | `ClientWithCoreApi` | Sui Core API client |
 | `txBase64` | `string` | Base64-encoded TransactionData |
 | `sender` | `string` | Sender address |
 
@@ -784,10 +784,10 @@ Sign and execute transaction.
 
 ```typescript
 async function signAndExecuteTransaction(
-  client: SuiClient,
+  client: SuiGrpcClient,
   keypair: Ed25519Keypair,
   txBase64: string
-): Promise<SuiTransactionBlockResponse>
+): Promise<SuiClientTypes.Transaction>
 ```
 
 ### Usage Example
@@ -919,10 +919,10 @@ cetus-cli query balance [-t <coinType>]
 ## Environment Variables
 
 ```bash
-# RPC Endpoints
-SUI_ENDPOINT_TESTNET=https://...
-SUI_ENDPOINT_PRE_MAINNET=https://...
-SUI_ENDPOINT_MAINNET=https://...
+# gRPC Endpoints
+SUI_GRPC_ENDPOINT_TESTNET=https://...
+SUI_GRPC_ENDPOINT_PRE_MAINNET=https://...
+SUI_GRPC_ENDPOINT_MAINNET=https://...
 
 # Wallet Configuration (choose one)
 SUI_WALLET_SECRET=<base64-encoded-secret>
@@ -935,7 +935,7 @@ SUI_WALLET_PHRASE=<mnemonic-phrase>
 
 ```json
 {
-  "@mysten/sui": "^1.6.0",
+  "@mysten/sui": "2.23.1",
   "@cetusprotocol/aggregator-sdk": "^0.3.1",
   "commander": "^12.0.0",
   "dotenv": "^16.4.5",
@@ -953,7 +953,7 @@ Web management interface built with React + Vite.
 
 - **Framework**: React 18 + TypeScript
 - **Build Tool**: Vite
-- **Wallet Connection**: @mysten/dapp-kit (Sui Wallet Kit)
+- **Wallet Connection**: @mysten/dapp-kit-react with `SuiGrpcClient`
 - **UI Components**: TailwindCSS + Headless UI
 - **State Management**: Zustand
 
@@ -998,7 +998,8 @@ web/
 ### Wallet Integration
 
 ```typescript
-import { WalletKitProvider, ConnectButton } from '@mysten/dapp-kit'
+import { DAppKitProvider } from '@mysten/dapp-kit-react'
+import { ConnectButton } from '@mysten/dapp-kit-react/ui'
 
 // Supported wallets:
 // - Sui Wallet

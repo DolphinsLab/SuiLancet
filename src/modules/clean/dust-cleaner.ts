@@ -160,7 +160,7 @@ export async function cleanDust(
 
     try {
       const devInspectRes = await client.devInspectTransactionBlock(tx)
-      if (devInspectRes.effects.status.status !== "success") {
+      if (!devInspectRes.effects.status.success) {
         console.log(`Batch ${Math.floor(i / batchSize) + 1} simulation failed, skipping`)
         continue
       }

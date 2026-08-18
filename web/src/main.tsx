@@ -1,37 +1,22 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { SuiClientProvider, WalletProvider } from '@mysten/dapp-kit'
-import { getFullnodeUrl } from '@mysten/sui/client'
-import { BrowserRouter } from 'react-router-dom'
+import { DAppKitProvider } from '@mysten/dapp-kit-react'
 import App from './App'
 import { DolphinIdProvider } from './components/DolphinIdProvider'
-import '@mysten/dapp-kit/dist/index.css'
+import { dAppKit } from './lib/sui-dapp'
 import './index.css'
 
 const queryClient = new QueryClient()
 
-const networks = {
-  mainnet: { url: getFullnodeUrl('mainnet') },
-  testnet: { url: getFullnodeUrl('testnet') },
-  devnet: { url: getFullnodeUrl('devnet') },
-}
-
-// Get default network from environment variable
-const defaultNetwork = (import.meta.env.VITE_DEFAULT_NETWORK || 'mainnet') as 'mainnet' | 'testnet' | 'devnet'
-
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <SuiClientProvider networks={networks} defaultNetwork={defaultNetwork}>
-        <WalletProvider autoConnect>
-          <DolphinIdProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
-          </DolphinIdProvider>
-        </WalletProvider>
-      </SuiClientProvider>
+      <DAppKitProvider dAppKit={dAppKit}>
+        <DolphinIdProvider>
+          <App />
+        </DolphinIdProvider>
+      </DAppKitProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 )

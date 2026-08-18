@@ -39,10 +39,10 @@ cp .env.example .env
 Edit `.env` with your configuration:
 
 ```bash
-# RPC Endpoints
-SUI_ENDPOINT_TESTNET=https://fullnode.testnet.sui.io:443
-SUI_ENDPOINT_MAINNET=https://fullnode.mainnet.sui.io:443
-SUI_ENDPOINT_PRE_MAINNET=https://fullnode.mainnet.sui.io:443
+# gRPC Endpoints
+SUI_GRPC_ENDPOINT_TESTNET=https://fullnode.testnet.sui.io:443
+SUI_GRPC_ENDPOINT_MAINNET=https://fullnode.mainnet.sui.io:443
+SUI_GRPC_ENDPOINT_PRE_MAINNET=https://fullnode.mainnet.sui.io:443
 
 # Wallet Configuration (choose one)
 SUI_WALLET_SECRET=<your-base64-encoded-secret-key>
@@ -119,7 +119,7 @@ Commands:
 npm run cli -- query wallet-info
 ```
 
-This should display your wallet address and RPC endpoint.
+This should display your wallet address and gRPC endpoint.
 
 ---
 
@@ -191,11 +191,11 @@ Open http://localhost:3000 in your browser.
 
 ## Troubleshooting
 
-### "Missing SUI_ENDPOINT_*" Error
+### "Missing SUI_GRPC_ENDPOINT_*" Error
 
-Ensure your `.env` file has the correct RPC endpoint for your environment:
+Ensure your `.env` file has the correct gRPC endpoint for your environment:
 ```bash
-SUI_ENDPOINT_MAINNET=https://fullnode.mainnet.sui.io:443
+SUI_GRPC_ENDPOINT_MAINNET=https://fullnode.mainnet.sui.io:443
 ```
 
 ### "No wallet secret or phrase found" Error

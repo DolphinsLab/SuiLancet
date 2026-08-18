@@ -37,9 +37,12 @@ SuiLancet frontend uses Cloudflare Pages with direct GitHub connection for deplo
 
 | Variable | Value |
 |----------|-------|
-| `NODE_VERSION` | `20` |
+| `NODE_VERSION` | `22` |
 | `VITE_APP_ENV` | `development` |
 | `VITE_DEFAULT_NETWORK` | `testnet` |
+| `VITE_SUI_GRPC_TESTNET` | `https://fullnode.testnet.sui.io:443` |
+| `VITE_SUI_GRPC_MAINNET` | `https://fullnode.mainnet.sui.io:443` |
+| `VITE_SUI_GRPC_DEVNET` | `https://fullnode.devnet.sui.io:443` |
 
 #### Prod Environment (suilancet)
 
@@ -56,9 +59,12 @@ SuiLancet frontend uses Cloudflare Pages with direct GitHub connection for deplo
 
 | Variable | Value |
 |----------|-------|
-| `NODE_VERSION` | `20` |
+| `NODE_VERSION` | `22` |
 | `VITE_APP_ENV` | `production` |
 | `VITE_DEFAULT_NETWORK` | `mainnet` |
+| `VITE_SUI_GRPC_MAINNET` | `https://fullnode.mainnet.sui.io:443` |
+| `VITE_SUI_GRPC_TESTNET` | `https://fullnode.testnet.sui.io:443` |
+| `VITE_SUI_GRPC_DEVNET` | `https://fullnode.devnet.sui.io:443` |
 
 ## Configuration Checklist
 
@@ -71,9 +77,10 @@ SuiLancet frontend uses Cloudflare Pages with direct GitHub connection for deplo
 
 ### Environment Variables Check
 
-- [ ] `NODE_VERSION` = `20`
+- [ ] `NODE_VERSION` = `22`
 - [ ] `VITE_APP_ENV` is set
 - [ ] `VITE_DEFAULT_NETWORK` is set
+- [ ] `VITE_SUI_GRPC_*` endpoints use HTTPS and support gRPC-web
 
 ### Post-Deployment Verification
 
@@ -81,7 +88,10 @@ SuiLancet frontend uses Cloudflare Pages with direct GitHub connection for deplo
 - [ ] No console errors
 - [ ] Wallet connect button displays
 - [ ] Default network is correct (check Settings page)
-- [ ] All routes work (`/coin`, `/transaction`, etc.)
+- [ ] All routes work (`/clean`, `/manage`, `/secure`, `/query`, `/settings`)
+- [ ] Dashboard balance and Query object lookup return data
+- [ ] Browser network panel shows gRPC-web service requests
+- [ ] No Sui JSON-RPC request or legacy dApp Kit bundle is present
 
 ## Deployment Methods
 
@@ -96,6 +106,10 @@ git push origin develop
 # Prod environment
 git push origin main
 ```
+
+Production changes must reach `main` through an issue-linked pull request after
+the root tests, live gRPC smoke test, and Web production build pass. Do not push
+the release branch directly to `main`.
 
 ### Manual Deployment
 
@@ -144,6 +158,34 @@ npm run dev
 ```javascript
 console.log(import.meta.env.VITE_DEFAULT_NETWORK)
 ```
+
+### 5. gRPC Requests Fail
+
+Confirm the endpoint supports browser gRPC-web requests and CORS. The production
+default is `https://fullnode.mainnet.sui.io:443`. A generic JSON-RPC-only
+endpoint is not compatible with this release.
+
+## Production Rollout and Rollback
+
+Before merging:
+
+- Record the current production deployment and `main` commit as the rollback target.
+- Verify `RUN_LIVE_GRPC=1 npm test -- tests/grpc-live.test.ts`.
+- Verify `npm test`, root `npm run build`, and Web `npm run build`.
+- Confirm the Cloudflare production variables above are set before the build starts.
+
+After merging:
+
+1. Wait for the Cloudflare Pages deployment associated with the merged `main` commit.
+2. Verify the production URL, all routes, wallet connect UI, mainnet balance read,
+   object lookup, and transaction simulation.
+3. Inspect browser requests and confirm Sui calls use gRPC-web service endpoints.
+4. Watch error rate and latency during the initial rollout window.
+
+Rollback immediately if critical gRPC reads fail, transaction simulation reports
+incorrect status, error rate doubles, or P95 latency increases by more than 50%.
+Use Cloudflare Pages to roll back to the recorded deployment, verify it is healthy,
+and keep the gRPC pull request open until a regression test covers the failure.
 
 ## Custom Domain
 

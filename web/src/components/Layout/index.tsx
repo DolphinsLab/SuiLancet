@@ -1,9 +1,10 @@
-import { ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { type MouseEvent, ReactNode } from 'react'
 import WalletButton from '../WalletButton'
 
 interface LayoutProps {
   children: ReactNode
+  pathname: string
+  onNavigate: (path: string) => void
 }
 
 const navItems = [
@@ -16,8 +17,24 @@ const navItems = [
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
-export default function Layout({ children }: LayoutProps) {
-  const location = useLocation()
+export default function Layout({
+  children,
+  pathname,
+  onNavigate,
+}: LayoutProps) {
+  const handleNavigation = (event: MouseEvent<HTMLAnchorElement>, path: string) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return
+    }
+    event.preventDefault()
+    onNavigate(path)
+  }
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -26,10 +43,14 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex items-center h-full">
           {/* Logo area - aligned with sidebar width */}
           <div className="w-64 flex items-center px-6 border-r border-slate-700 h-full">
-            <Link to="/" className="flex items-center space-x-2">
+            <a
+              href="/"
+              onClick={(event) => handleNavigation(event, '/')}
+              className="flex items-center space-x-2"
+            >
               <span className="text-xl">🔱</span>
               <span className="text-lg font-bold text-white tracking-tight">SuiLancet</span>
-            </Link>
+            </a>
           </div>
           {/* Header right - aligned with main content */}
           <div className="flex-1 flex items-center justify-between px-6">
@@ -44,18 +65,19 @@ export default function Layout({ children }: LayoutProps) {
         <aside className="w-64 min-h-[calc(100vh-3.5rem)] bg-slate-800 border-r border-slate-700">
           <nav className="p-3 space-y-1">
             {navItems.map((item) => (
-              <Link
+              <a
                 key={item.path}
-                to={item.path}
+                href={item.path}
+                onClick={(event) => handleNavigation(event, item.path)}
                 className={`flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  location.pathname === item.path
+                  pathname === item.path
                     ? 'bg-sui-600 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-slate-700/60'
                 }`}
               >
                 <span className="text-base">{item.icon}</span>
                 <span>{item.label}</span>
-              </Link>
+              </a>
             ))}
           </nav>
         </aside>

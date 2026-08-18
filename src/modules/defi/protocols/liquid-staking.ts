@@ -1,6 +1,8 @@
-import { SuiClient } from "@mysten/sui/client"
+import type { ClientWithCoreApi } from "@mysten/sui/client"
 import { StakingPosition } from "../types"
 import { LIQUID_STAKING, SUI_TYPE } from "../constants"
+import { listAllBalances } from "../../../common/balance"
+import { listOwnedMoveObjects } from "../owned-objects"
 
 /**
  * Liquid Staking Token adapter.
@@ -8,12 +10,12 @@ import { LIQUID_STAKING, SUI_TYPE } from "../constants"
  * These represent staked SUI positions in various LST protocols.
  */
 export async function fetchLiquidStakingPositions(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string
 ): Promise<StakingPosition[]> {
   const positions: StakingPosition[] = []
 
-  const allBalances = await client.getAllBalances({ owner: walletAddress })
+  const allBalances = await listAllBalances(client, walletAddress)
 
   const lstConfigs = Object.values(LIQUID_STAKING)
 
@@ -23,7 +25,7 @@ export async function fetchLiquidStakingPositions(
     )
 
     if (lstConfig) {
-      const amount = Number(balance.totalBalance)
+      const amount = Number(balance.balance)
       if (amount > 0) {
         positions.push({
           protocol: lstConfig.protocol,
@@ -49,30 +51,31 @@ export async function fetchLiquidStakingPositions(
  * Fetch native SUI staking positions (StakedSui objects).
  */
 async function fetchNativeStaking(
-  client: SuiClient,
+  client: ClientWithCoreApi,
   walletAddress: string
 ): Promise<StakingPosition[]> {
   const positions: StakingPosition[] = []
 
   try {
-    const stakes = await client.getStakes({ owner: walletAddress })
+    const stakes = await listOwnedMoveObjects(
+      client,
+      walletAddress,
+      "0x3::staking_pool::StakedSui"
+    )
+    for (const stake of stakes) {
+      const amount = Number(stake.fields.principal ?? 0)
+      if (amount <= 0) continue
 
-    for (const validatorStake of stakes) {
-      for (const stake of validatorStake.stakes) {
-        const amount = Number(stake.principal)
-        if (amount > 0) {
-          positions.push({
-            protocol: "Sui Native Staking",
-            category: "staking",
-            objectId: stake.stakedSuiId,
-            stakedToken: SUI_TYPE,
-            receivedToken: SUI_TYPE,
-            symbol: "SUI",
-            amount,
-            decimals: 9,
-          })
-        }
-      }
+      positions.push({
+        protocol: "Sui Native Staking",
+        category: "staking",
+        objectId: stake.objectId,
+        stakedToken: SUI_TYPE,
+        receivedToken: SUI_TYPE,
+        symbol: "SUI",
+        amount,
+        decimals: 9,
+      })
     }
   } catch {
     // Native staking query may fail on testnet

@@ -1,3 +1,4 @@
+import type { SuiClientTypes } from "@mysten/sui/client"
 import { Transaction } from "@mysten/sui/transactions"
 import { SuiScriptClient } from "../../core"
 import { getObjectRef } from "../../common/object"
@@ -30,29 +31,33 @@ export async function listKiosks(
 
   // Find KioskOwnerCaps owned by user
   const caps: { objectId: string; kioskId: string }[] = []
-  let cursor: string | null | undefined = undefined
-  let hasNext = true
+  let cursor: string | null = null
 
-  while (hasNext) {
-    const result = await client.client.getOwnedObjects({
+  while (true) {
+    const result: SuiClientTypes.ListOwnedObjectsResponse<{ json: true }> =
+      await client.client.core.listOwnedObjects({
       owner: address,
-      filter: { StructType: KIOSK_OWNER_CAP_TYPE },
-      options: { showContent: true },
-      cursor: cursor ?? undefined,
+      type: KIOSK_OWNER_CAP_TYPE,
+      include: { json: true },
+      cursor,
       limit: 50,
-    })
+      })
 
-    for (const obj of result.data) {
-      if (!obj.data?.content || obj.data.content.dataType !== "moveObject") continue
-      const fields = obj.data.content.fields as Record<string, unknown>
-      const forField = fields["for"] as string | undefined
+    for (const object of result.objects) {
+      const forField = object.json?.["for"]
       if (forField) {
-        caps.push({ objectId: obj.data.objectId, kioskId: forField })
+        caps.push({
+          objectId: object.objectId,
+          kioskId: String(forField),
+        })
       }
     }
 
-    hasNext = result.hasNextPage
-    cursor = result.nextCursor
+    if (!result.hasNextPage) break
+    if (!result.cursor) {
+      throw new Error("gRPC object pagination returned no cursor")
+    }
+    cursor = result.cursor
   }
 
   if (caps.length === 0) {
@@ -63,18 +68,17 @@ export async function listKiosks(
   const kiosks: KioskInfo[] = []
   for (const cap of caps) {
     try {
-      const kioskObj = await client.client.getObject({
-        id: cap.kioskId,
-        options: { showContent: true },
+      const { object } = await client.client.core.getObject({
+        objectId: cap.kioskId,
+        include: { json: true },
       })
 
-      if (kioskObj.data?.content && kioskObj.data.content.dataType === "moveObject") {
-        const fields = kioskObj.data.content.fields as Record<string, unknown>
+      if (object.json) {
         kiosks.push({
           kioskId: cap.kioskId,
           ownerCapId: cap.objectId,
-          itemCount: Number(fields["item_count"] ?? 0),
-          profits: Number(fields["profits"] ?? 0),
+          itemCount: Number(object.json["item_count"] ?? 0),
+          profits: Number(object.json["profits"] ?? 0),
         })
       }
     } catch {
@@ -116,25 +120,25 @@ export async function showKiosk(
   let hasNext = true
 
   while (hasNext) {
-    const result = await client.client.getDynamicFields({
+    const result = await client.client.core.listDynamicFields({
       parentId: kioskId,
-      cursor: cursor ?? undefined,
+      cursor,
       limit: 50,
     })
 
-    for (const field of result.data) {
+    for (const field of result.dynamicFields) {
       // Kiosk items are stored as dynamic fields with Item type
       if (field.name.type?.includes("kiosk::Item")) {
         items.push({
-          objectId: field.objectId,
-          type: field.objectType ?? "unknown",
+          objectId: field.childId ?? field.fieldId,
+          type: field.valueType,
           isListed: false, // Would need to check Listing dynamic fields
         })
       }
     }
 
     hasNext = result.hasNextPage
-    cursor = result.nextCursor
+    cursor = result.cursor
   }
 
   console.log(`Kiosk ${kioskId} contents:`)
