@@ -1,5 +1,7 @@
 # SuiLancet v2 - Product Requirements Document
 
+> **Historical planning document:** 本文件保留 v2 的原始规划背景，包含未落地或已调整的需求。当前已支持功能、页面行为与限制请以 [Current Product Documentation](../prd/README.md) 为准。
+
 > **Version**: 2.0
 > **Last Updated**: 2026-06-03
 > **Status**: Implemented

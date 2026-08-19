@@ -1,5 +1,7 @@
 # SuiLancet SDK Reference
 
+> **Historical reference:** 本文件包含旧架构与已移除协议的说明。当前 SDK 公共能力请以 [SDK Current Inventory](../prd/appendix/sdk-inventory.md) 为准，产品能力总览见 [Current Product Documentation](../prd/README.md)。
+
 > Multi-project interaction toolkit for Sui blockchain, built on `@mysten/sui`
 
 ---
