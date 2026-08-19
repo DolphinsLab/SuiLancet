@@ -76,6 +76,7 @@ SuiLancet/
 
 ## Documentation
 
+- [Current Product Documentation](prd/README.md) - Source-of-truth feature inventory and current limitations
 - [SDK Reference](docs/SDK-REFERENCE.md) - Complete API documentation
 - [Deployment Guide](docs/DEPLOYMENT.md) - Cloudflare Pages deployment
 
